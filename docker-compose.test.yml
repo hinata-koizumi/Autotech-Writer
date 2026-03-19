@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: autotech
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: autotech_test
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autotech -d autotech_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # We can add go-collector and python-llm later here when doing actual E2E integration test
+  # For TDD purpose, having the DB up with schema loaded is the primary requirement
+  # to allow running integration tests with pytest-asyncio and go test

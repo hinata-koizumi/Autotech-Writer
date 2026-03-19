@@ -1,0 +1,25 @@
+[
+  {
+    "id": "arxiv-2401-00123",
+    "source": "arxiv",
+    "title": "Scaling Laws for Autoregressive Generative Modeling",
+    "summary": "We conduct an empirical investigation of scaling laws for autoregressive generative modeling. We find that performance depends strongly on scale, and weakly on model shape. A model's scale is determined by the number of parameters N, the dataset size D, and the amount of compute C used for training. We identify relationships between these factors that allow us to predict performance.",
+    "expected_facts": [
+      "自己回帰生成モデルの自己回帰則（スケーリング則）を経験的に調査した",
+      "性能はモデルのスケール（パラメータ数N、データセットサイズD、計算量C）に強く依存する",
+      "モデルの形状には弱く依存する"
+    ]
+  },
+  {
+    "id": "github-release-foo",
+    "source": "github",
+    "title": "Release v2.0.0: The New Async Architecture",
+    "summary": "This major release introduces a completely rewritten asynchronous I/O engine. Performance has improved by up to 3x in high-concurrency scenarios. We also dropped support for Python 3.8 and added support for Python 3.12. Security fix: padded RSA encryption vulnerabilities (CVE-2024-1234) are patched.",
+    "expected_facts": [
+      "メジャーリリースv2.0.0で非同期I/Oエンジンが完全に書き直された",
+      "高並行処理のシナリオにおいて、パフォーマンスが最大3倍向上した",
+      "Python 3.8のサポートを終了し、Python 3.12のサポートを追加した",
+      "CVE-2024-1234（RSA暗号化の脆弱性）に対するセキュリティパッチが含まれている"
+    ]
+  }
+]
