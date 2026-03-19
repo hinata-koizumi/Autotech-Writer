@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: autotech
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  python-llm:
+    build: ./python-llm
+    env_file: .env
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  go-collector:
+    build: ./go-collector
+    env_file: .env
+    depends_on:
+      - db
+      - python-llm
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/autotech?sslmode=disable
+      WEBHOOK_URL: http://python-llm:8000/trigger
+      FETCH_INTERVAL_MINUTES: 15
+    # Optional: use command to run as daemon or oneshot
