@@ -339,7 +339,7 @@ func TestArxivFetcher_WithHTTPTest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockXML))
+		_, _ = w.Write([]byte(mockXML))
 	}))
 	defer server.Close()
 
@@ -373,10 +373,10 @@ func TestGitHubFetcher_WithHTTPTest(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/releases") {
-			json.NewEncoder(w).Encode(releases)
+			_ = json.NewEncoder(w).Encode(releases)
 		} else {
 			// Mock repository metadata response for getRepoStars
-			w.Write([]byte(`{"stargazers_count": 2000, "created_at": "2024-01-01T00:00:00Z"}`))
+			_, _ = w.Write([]byte(`{"stargazers_count": 2000, "created_at": "2024-01-01T00:00:00Z"}`))
 		}
 	}))
 	defer server.Close()
@@ -527,12 +527,12 @@ func TestArxivFetcher_EnhancedScoring(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/api/query") {
 			w.Header().Set("Content-Type", "application/xml")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(arxivXML))
+			_, _ = w.Write([]byte(arxivXML))
 		} else if strings.Contains(r.URL.Path, "/graph/v1/paper/batch") {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			// Mock Batch Response: Note that IDs here DO NOT have 'v1' or 'v2'
-			w.Write([]byte(`[
+			_, _ = w.Write([]byte(`[
 				{
 					"paperId": "id1",
 					"externalIds": {"ArXiv": "2403.00001"},

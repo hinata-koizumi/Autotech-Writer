@@ -33,7 +33,9 @@ func (r *Repository) InsertItem(item models.FetchedItem) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("beginning transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// 1. Mark as seen (deduplication)
 	_, err = tx.Exec(`INSERT INTO seen_articles (source_id, created_at) VALUES ($1, NOW()) ON CONFLICT DO NOTHING`, item.SourceID)

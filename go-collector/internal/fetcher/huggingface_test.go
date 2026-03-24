@@ -33,16 +33,12 @@ func TestHuggingFaceFetcher_Fetch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/daily_papers" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(hfResponse)
+			_ = json.NewEncoder(w).Encode(hfResponse)
 			return
 		}
 		if r.URL.Path == "/e-print/2603.12345" {
-			// Mock ArXiv e-print response (LaTeX)
-			// For simplicity, we just return some text (not a real gzip/tar)
-			// In the real fetchAndProcessLatex, this would cause an error in gzip.NewReader
-			// but we want to verify the logic flow.
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("not a gzip"))
+			_, _ = w.Write([]byte("not a gzip"))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

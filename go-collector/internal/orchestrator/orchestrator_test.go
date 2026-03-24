@@ -72,10 +72,7 @@ func TestOrchestrator_ConcurrentFetch_NoRace(t *testing.T) {
 	// Use the Fetcher interface from the fetcher package
 	// Build orchestrator with converted fetchers
 	orch := NewOrchestrator(nil, repo)
-	var fetcherIfaces []interface {
-		Fetch(context.Context) ([]models.FetchedItem, error)
-	}
-	fetcherIfaces = fetchers
+	fetcherIfaces := fetchers
 	_ = fetcherIfaces
 
 	// Instead, directly test concurrent DB access pattern
