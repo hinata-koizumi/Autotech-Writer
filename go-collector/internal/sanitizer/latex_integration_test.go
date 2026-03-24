@@ -14,20 +14,23 @@ import (
 // realFetchURL is used for integration testing to fetch actual data from arXiv.
 func realFetchURL(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	var err error
-
+	var resp *http.Response
+	var req *http.Request
 	for attempt := 1; attempt <= 3; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, err
 		}
 		req.Header.Set("User-Agent", "Autotech-Writer-Test/1.0")
 
-		resp, err := client.Do(req)
+		resp, err = client.Do(req)
 		if err == nil {
-			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				return io.ReadAll(resp.Body)
+				body, bodyErr := io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				return body, bodyErr
 			}
+			_ = resp.Body.Close()
 			err = fmt.Errorf("server returned status: %d", resp.StatusCode)
 		}
 
