@@ -12,9 +12,9 @@ import (
 // 異常な入力値のサニタイズ検証
 // ============================================================
 
-// [異常系] タイトルが1万文字以上の場合、適切に切り詰められること
+// [異常系] タイトルが制限文字数（500文字）以上の場合、適切に切り詰められること
 func TestSanitize_OversizedTitle(t *testing.T) {
-	longTitle := strings.Repeat("あ", 10001)
+	longTitle := strings.Repeat("あ", MaxTitleLength+1)
 	item := models.FetchedItem{
 		SourceType:  "arxiv",
 		SourceID:    "test-001",
@@ -29,7 +29,7 @@ func TestSanitize_OversizedTitle(t *testing.T) {
 	}
 
 	titleRunes := []rune(sanitized.Title)
-	// MaxTitleLength (5000) + "..." (3 chars)
+	// MaxTitleLength (500) + "..." (3 chars)
 	if len(titleRunes) > MaxTitleLength+3 {
 		t.Errorf("expected title length <= %d, got %d", MaxTitleLength+3, len(titleRunes))
 	}
@@ -126,7 +126,7 @@ func TestSanitize_PreservesNewlinesAndTabs(t *testing.T) {
 	}
 }
 
-// [異常系] 空のタイトルでもクラッシュしないこと
+// [異常系] 空のタイトルはエラーを返すこと
 func TestSanitize_EmptyTitle(t *testing.T) {
 	item := models.FetchedItem{
 		SourceType:  "arxiv",
@@ -136,13 +136,12 @@ func TestSanitize_EmptyTitle(t *testing.T) {
 		PublishedAt: time.Now().Add(-1 * time.Hour),
 	}
 
-	sanitized, err := Sanitize(item)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+	_, err := Sanitize(item)
+	if err == nil {
+		t.Fatal("expected error for empty title, got nil")
 	}
-
-	if sanitized.Title != "" {
-		t.Errorf("expected empty title to remain empty, got '%s'", sanitized.Title)
+	if err.Error() != "empty title" {
+		t.Errorf("expected 'empty title' error, got '%v'", err)
 	}
 }
 

@@ -1,6 +1,6 @@
 module github.com/autotech-writer/go-collector
 
-go 1.26.1
+go 1.21
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2

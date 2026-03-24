@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	"github.com/autotech-writer/go-collector/internal/models"
 )
 
 // ============================================================
@@ -370,11 +372,17 @@ func TestGitHubFetcher_WithHTTPTest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(releases)
+		if strings.Contains(r.URL.Path, "/releases") {
+			json.NewEncoder(w).Encode(releases)
+		} else {
+			// Mock repository metadata response for getRepoStars
+			w.Write([]byte(`{"stargazers_count": 2000, "created_at": "2024-01-01T00:00:00Z"}`))
+		}
 	}))
 	defer server.Close()
 
 	fetcher := NewGitHubFetcher(server.URL, []string{"test/repo"}, server.Client())
+	fetcher.StarThreshold = 0 // Bypass star filter for testing fetch logic
 	items, err := fetcher.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -384,6 +392,47 @@ func TestGitHubFetcher_WithHTTPTest(t *testing.T) {
 	}
 	if items[0].Title != "Major Release 2.0" {
 		t.Errorf("expected title 'Major Release 2.0', got '%s'", items[0].Title)
+	}
+}
+
+func TestGitHubFetcher_EvaluateOwnerScore(t *testing.T) {
+	fetcher := &GitHubFetcher{}
+	
+	tests := []struct {
+		repoPath      string
+		expectedScore int
+		expectedOwner string
+	}{
+		{"google/go-cmp", 50, "google"},
+		{"openai/gpt-3", 50, "openai"},
+		{"hashicorp/terraform", 30, "hashicorp"},
+		{"kubernetes/kubernetes", 30, "kubernetes"},
+		{"vllm-project/vllm", 30, "vllm-project"},
+		{"ollama/ollama", 30, "ollama"},
+		{"ultralytics/ultralytics", 30, "ultralytics"},
+		{"tiangolo/fastapi", 30, "tiangolo"},
+		{"docker/compose", 30, "docker"},
+		{"aws-samples/aws-cdk-examples", 10, "aws-samples"},
+		{"google-research/bert", 10, "google-research"},
+		{"owner/random-repo", 0, ""},
+	}
+
+	for _, tt := range tests {
+		item := &models.FetchedItem{Metadata: make(map[string]string)}
+		fetcher.evaluateOwnerScore(item, tt.repoPath)
+		
+		if item.Score != tt.expectedScore {
+			t.Errorf("For %s, expected score %d, got %d", tt.repoPath, tt.expectedScore, item.Score)
+		}
+		if tt.expectedOwner != "" {
+			if item.Metadata["renowned_owner"] != tt.expectedOwner {
+				t.Errorf("For %s, expected renowned_owner %s, got %s", tt.repoPath, tt.expectedOwner, item.Metadata["renowned_owner"])
+			}
+		} else {
+			if _, ok := item.Metadata["renowned_owner"]; ok {
+				t.Errorf("For %s, expected no renowned_owner, got %s", tt.repoPath, item.Metadata["renowned_owner"])
+			}
+		}
 	}
 }
 
@@ -448,4 +497,80 @@ func createMockFeed(title string, items []mockFeedItem) *gofeed.Feed {
 		feed.Items = append(feed.Items, item)
 	}
 	return feed
+}
+// [正常系] Batch APIを利用した会議情報と引用数の拡張スコアリング（およびバージョン番号の除去）が正しく動作すること
+func TestArxivFetcher_EnhancedScoring(t *testing.T) {
+	arxivXML := `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <entry>
+    <id>http://arxiv.org/abs/2403.00001v1</id>
+    <title>Great AI Paper</title>
+    <summary>Testing enhanced scoring with v1.</summary>
+    <published>2024-03-20T00:00:00Z</published>
+    <link href="http://arxiv.org/abs/2403.00001v1" rel="alternate" type="text/html"/>
+    <author><name>Author</name></author>
+    <arxiv:journal_ref>accepted at NEURIPS 2024</arxiv:journal_ref>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2403.00002v2</id>
+    <title>Another Great Paper</title>
+    <summary>Testing version stripping with v2.</summary>
+    <published>2024-03-21T00:00:00Z</published>
+    <link href="http://arxiv.org/abs/2403.00002v2" rel="alternate" type="text/html"/>
+    <author><name>Author</name></author>
+    <arxiv:comment>nips 2023 spotlight</arxiv:comment>
+  </entry>
+</feed>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/api/query") {
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(arxivXML))
+		} else if strings.Contains(r.URL.Path, "/graph/v1/paper/batch") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			// Mock Batch Response: Note that IDs here DO NOT have 'v1' or 'v2'
+			w.Write([]byte(`[
+				{
+					"paperId": "id1",
+					"externalIds": {"ArXiv": "2403.00001"},
+					"citationCount": 100,
+					"influentialCitationCount": 10
+				},
+				{
+					"paperId": "id2",
+					"externalIds": {"ArXiv": "2403.00002"},
+					"citationCount": 200,
+					"influentialCitationCount": 15
+				}
+			]`))
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	fetcher := NewArxivFetcher(server.URL, []string{"cs.AI"}, server.Client())
+	fetcher.S2BaseURL = server.URL
+	fetcher.S2MinScore = 0
+
+	items, err := fetcher.Fetch(context.Background())
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+
+	// Verify first item (2403.00001v1 matches 2403.00001: 40 + influence: 20 = 60)
+	if items[0].Score < 60 {
+		t.Errorf("expected score >= 60 for versioned item 1, got %d", items[0].Score)
+	}
+
+	// Verify second item (2403.00002v2 matches 2403.00002: 40 + influence: 20 = 60)
+	if items[1].Score < 60 {
+		t.Errorf("expected score >= 60 for versioned item 2, got %d", items[1].Score)
+	}
 }

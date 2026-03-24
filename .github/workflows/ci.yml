@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  go-checks:
+    name: Go Lint and Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./go-collector
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go-collector/go.mod'
+          cache-dependency-path: 'go-collector/go.sum'
+
+      - name: Go Format
+        run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+
+      - name: Go Vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: go-collector
+
+      - name: Go Test
+        run: go test -v -race ./...
+
+  python-checks:
+    name: Python Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./python-llm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Assumed standard, modify if specified differently
+          cache: 'pip'
+          cache-dependency-path: 'python-llm/requirements.txt'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Pytest
+        run: python -m pytest tests/ -v
+
+  docker-compose-check:
+    name: Infrastructure / Integration Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose syntax
+        run: docker compose -f docker-compose.test.yml config
+
+      - name: Start test database
+        run: docker compose -f docker-compose.test.yml up -d db
+
+      - name: Check DB is healthy
+        run: |
+          echo "Waiting for PostgreSQL to be healthy..."
+          timeout 30s bash -c 'until docker inspect --format "{{json .State.Health.Status }}" $(docker compose -f docker-compose.test.yml ps -q db) | grep -q "healthy"; do sleep 1; done'

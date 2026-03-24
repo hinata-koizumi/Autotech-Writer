@@ -29,8 +29,14 @@ func TestInsertItem_NewItem(t *testing.T) {
 		Summary:     "Test summary",
 		URL:         "http://arxiv.org/abs/2401.00001v1",
 		PublishedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		Score:       50,
 		RawData:     `{"test": true}`,
 	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO seen_articles").
+		WithArgs(item.SourceID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectExec("INSERT INTO articles").
 		WithArgs(
@@ -38,12 +44,15 @@ func TestInsertItem_NewItem(t *testing.T) {
 			item.SourceID,
 			item.Title,
 			item.Summary,
+			item.FullContent,
 			item.URL,
 			item.PublishedAt,
 			item.RawData,
+			sqlmock.AnyArg(), // score
 			sqlmock.AnyArg(), // created_at / updated_at
 		).
-		WillReturnResult(sqlmock.NewResult(1, 1)) // 1 row affected = new insert
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
 	inserted, err := repo.InsertItem(item)
 	if err != nil {
@@ -75,8 +84,14 @@ func TestInsertItem_DuplicateSkip(t *testing.T) {
 		Summary:     "Already exists",
 		URL:         "http://arxiv.org/abs/2401.00001v1",
 		PublishedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		Score:       50,
 		RawData:     `{}`,
 	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO seen_articles").
+		WithArgs(item.SourceID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	mock.ExpectExec("INSERT INTO articles").
 		WithArgs(
@@ -84,12 +99,15 @@ func TestInsertItem_DuplicateSkip(t *testing.T) {
 			item.SourceID,
 			item.Title,
 			item.Summary,
+			item.FullContent,
 			item.URL,
 			item.PublishedAt,
 			item.RawData,
 			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
 		).
-		WillReturnResult(sqlmock.NewResult(0, 0)) // 0 rows affected = duplicate, ON CONFLICT DO NOTHING
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
 
 	inserted, err := repo.InsertItem(item)
 	if err != nil {
@@ -121,8 +139,14 @@ func TestInsertItem_DBError(t *testing.T) {
 		Summary:     "This should fail",
 		URL:         "http://arxiv.org/abs/error-test",
 		PublishedAt: time.Now(),
+		Score:       50,
 		RawData:     `{}`,
 	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO seen_articles").
+		WithArgs(item.SourceID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectExec("INSERT INTO articles").
 		WithArgs(
@@ -130,12 +154,15 @@ func TestInsertItem_DBError(t *testing.T) {
 			item.SourceID,
 			item.Title,
 			item.Summary,
+			item.FullContent,
 			item.URL,
 			item.PublishedAt,
 			item.RawData,
 			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
 		).
 		WillReturnError(sqlmock.ErrCancelled)
+	mock.ExpectRollback()
 
 	_, err = repo.InsertItem(item)
 	if err == nil {

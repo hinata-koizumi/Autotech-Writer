@@ -46,7 +46,9 @@ func TestOrchestrator_ConcurrentFetch_NoRace(t *testing.T) {
 	repo := repository.NewRepository(db)
 
 	// 3つのフェッチャーが同時にデータを返す
-	fetchers := []interface{ Fetch(context.Context) ([]models.FetchedItem, error) }{
+	fetchers := []interface {
+		Fetch(context.Context) ([]models.FetchedItem, error)
+	}{
 		&mockFetcher{items: []models.FetchedItem{
 			{SourceType: "arxiv", SourceID: "arxiv-001", Title: "Paper A"},
 			{SourceType: "arxiv", SourceID: "arxiv-002", Title: "Paper B"},
@@ -70,7 +72,9 @@ func TestOrchestrator_ConcurrentFetch_NoRace(t *testing.T) {
 	// Use the Fetcher interface from the fetcher package
 	// Build orchestrator with converted fetchers
 	orch := NewOrchestrator(nil, repo)
-	var fetcherIfaces []interface{ Fetch(context.Context) ([]models.FetchedItem, error) }
+	var fetcherIfaces []interface {
+		Fetch(context.Context) ([]models.FetchedItem, error)
+	}
 	fetcherIfaces = fetchers
 	_ = fetcherIfaces
 
@@ -79,16 +83,13 @@ func TestOrchestrator_ConcurrentFetch_NoRace(t *testing.T) {
 	done := make(chan struct{})
 
 	for _, f := range fetchers {
-		go func(ftch interface{ Fetch(context.Context) ([]models.FetchedItem, error) }) {
-			defer func() { done <- struct{}{} }()
-			items, err := ftch.Fetch(context.Background())
-			if err != nil {
-				return
-			}
-			for range items {
-				atomic.AddInt32(&insertCount, 1)
-			}
-		}(f)
+		go func(ftch interface {
+			Fetch(context.Context) ([]models.FetchedItem, error)
+		}) { defer func() { done <- struct{}{} }(); items, err := ftch.Fetch(context.Background()); if err != nil {
+			return
+		}; for range items {
+			atomic.AddInt32(&insertCount, 1)
+		} }(f)
 	}
 
 	for range fetchers {

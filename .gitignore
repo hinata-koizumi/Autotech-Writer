@@ -43,5 +43,7 @@ Thumbs.db
 *.swo
 
 # Project specific
+go-collector/collector
 go-collector/go-collector
 python-llm/.venv/
+python-llm/venv_test/

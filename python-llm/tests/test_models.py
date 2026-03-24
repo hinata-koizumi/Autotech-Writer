@@ -1,112 +1,94 @@
-"""Tests for Pydantic model validation."""
+"""Tests for Pydantic model validation of current models."""
 
 import pytest
 from pydantic import ValidationError
-
-from app.models import GeneratedArticle, TriageResult
-
-
-class TestTriageResult:
-    """Tests for TriageResult model."""
-
-    def test_valid_true(self):
-        """[正常系] is_valuable=True が正しくパースされること"""
-        result = TriageResult(is_valuable=True)
-        assert result.is_valuable is True
-
-    def test_valid_false(self):
-        """[正常系] is_valuable=False が正しくパースされること"""
-        result = TriageResult(is_valuable=False)
-        assert result.is_valuable is False
-
-    def test_from_json(self):
-        """[正常系] JSON辞書からパースできること"""
-        data = {"is_valuable": True}
-        result = TriageResult(**data)
-        assert result.is_valuable is True
+from app.models import ExtractionResult, ArticleResponse, EvaluationMetric
 
 
-class TestGeneratedArticle:
-    """Tests for GeneratedArticle model with validation rules."""
+class TestExtractionResult:
+    """Tests for ExtractionResult model."""
 
-    @staticmethod
-    def _make_body(length: int = 1500) -> str:
-        """Helper to create article body of specified length."""
-        return "あ" * length
+    def test_valid_extraction(self):
+        """[正常系] 全フィールドが正しくパースされること"""
+        data = {
+            "arxiv_id": "2407.02071",
+            "model_size": "7B",
+            "target_hardware": "H100",
+            "primary_result": "2.0x faster",
+            "problem_statement": "High cost",
+            "proposed_architecture": "New Quant",
+            "technical_keyword": "Asynchronous",
+            "evaluation_metrics": [
+                {"metric_name": "Latency", "score": "0.5ms", "source_quote": "result is 0.5ms"}
+            ],
+            "limitations": "N/A",
+            "current_status": "Preview",
+            "is_information_sufficient": True
+        }
+        result = ExtractionResult(**data)
+        assert result.arxiv_id == "2407.02071"
+        assert len(result.evaluation_metrics) == 1
+        assert result.evaluation_metrics[0].metric_name == "Latency"
+
+    def test_optional_fields(self):
+        """[正常系] オプショナルなフィールドが欠けていてもデフォルト値が入ること"""
+        result = ExtractionResult(primary_result="Success")
+        assert result.arxiv_id is None
+        assert result.model_size == ""
+        assert result.is_information_sufficient is False
+
+
+class TestArticleResponse:
+    """Tests for ArticleResponse model."""
 
     def test_valid_article(self):
-        """[正常系] hook_text と article_body を含むLLMレスポンスが正しくパースされること"""
-        article = GeneratedArticle(
-            hook_text="🔥 新しいTransformerアーキテクチャが登場",
-            article_body=self._make_body(1500),
-        )
-        assert article.hook_text == "🔥 新しいTransformerアーキテクチャが登場"
-        assert len(article.article_body) == 1500
+        """[正常系] contentが正しく保持されること"""
+        result = ArticleResponse(content="This is a test article.")
+        assert result.content == "This is a test article."
 
-    def test_hook_text_with_http_url_raises(self):
-        """[異常系] hook_textにhttp://を含むURLがある場合ValidationErrorが発生すること"""
-        with pytest.raises(ValidationError) as exc_info:
-            GeneratedArticle(
-                hook_text="詳しくは http://example.com を参照",
-                article_body=self._make_body(),
-            )
-        assert "url" in str(exc_info.value).lower() or "URL" in str(exc_info.value)
-
-    def test_hook_text_with_https_url_raises(self):
-        """[異常系] hook_textにhttps://を含むURLがある場合ValidationErrorが発生すること"""
-        with pytest.raises(ValidationError) as exc_info:
-            GeneratedArticle(
-                hook_text="参考: https://arxiv.org/abs/2401.00001",
-                article_body=self._make_body(),
-            )
-        assert "url" in str(exc_info.value).lower() or "URL" in str(exc_info.value)
-
-    def test_article_body_with_url_raises(self):
-        """[異常系] article_bodyにURLが含まれる場合ValidationErrorが発生すること"""
-        body_with_url = self._make_body(500) + " https://github.com/test " + self._make_body(500)
+    def test_missing_content_raises(self):
+        """[異常系] contentが欠けている場合にValidationErrorが発生すること"""
         with pytest.raises(ValidationError):
-            GeneratedArticle(
-                hook_text="テスト",
-                article_body=body_with_url,
-            )
+            ArticleResponse()
 
-    def test_article_body_too_short_raises(self):
-        """[異常系] article_bodyが1000文字未満の場合エラーとして弾くこと"""
-        with pytest.raises(ValidationError) as exc_info:
-            GeneratedArticle(
-                hook_text="テスト",
-                article_body="短すぎる本文",  # 6 chars
-            )
-        assert "1000" in str(exc_info.value)
 
-    def test_article_body_exactly_1000_chars(self):
-        """[正常系] article_bodyがちょうど1000文字の場合はパスすること"""
-        article = GeneratedArticle(
-            hook_text="テスト",
-            article_body=self._make_body(1000),
+class TestEvaluationMetric:
+    """Tests for EvaluationMetric model."""
+
+    def test_valid_metric(self):
+        """[正常系] 各型が正しく扱われること"""
+        metric = EvaluationMetric(
+            metric_name="Throughput",
+            score=100.5,
+            source_quote="100.5 tokens/s"
         )
-        assert len(article.article_body) == 1000
+        assert metric.score == 100.5
 
-    def test_article_body_999_chars_raises(self):
-        """[異常系] article_bodyが999文字の場合エラーになること"""
-        with pytest.raises(ValidationError):
-            GeneratedArticle(
-                hook_text="テスト",
-                article_body=self._make_body(999),
-            )
-
-    def test_url_in_middle_of_text_detected(self):
-        """[異常系] テキスト中間に埋め込まれたURLも検出されること"""
-        with pytest.raises(ValidationError):
-            GeneratedArticle(
-                hook_text="前文 http://evil.com 後文",
-                article_body=self._make_body(),
-            )
-
-    def test_text_without_url_passes(self):
-        """[正常系] URLを含まないテキストはバリデーションを通過すること"""
-        article = GeneratedArticle(
-            hook_text="これはURLを含まないテキストです。httpという単語だけなら大丈夫",
-            article_body=self._make_body(),
+    def test_string_score(self):
+        """[正常系] scoreに文字列が渡されても許容されること"""
+        metric = EvaluationMetric(
+            metric_name="Accuracy",
+            score="95%",
+            source_quote="95% accuracy achieved"
         )
-        assert "http" in article.hook_text  # "http" alone without :// is OK
+class TestArticleUpdate:
+    """Tests for ArticleUpdate model."""
+
+    def test_valid_update(self):
+        """[正常系] フィールドが正しく設定されること"""
+        from app.models import ArticleStatus, ArticleUpdate
+        update = ArticleUpdate(
+            status=ArticleStatus.COMPLETED,
+            hook_text="Test hook",
+            x_thread_ids=["123", "456"]
+        )
+        assert update.status == ArticleStatus.COMPLETED
+        assert update.hook_text == "Test hook"
+        assert update.x_thread_ids == ["123", "456"]
+
+    def test_empty_update(self):
+        """[正常系] 全フィールドがNoneでもバリデーションに通ること"""
+        from app.models import ArticleUpdate
+        update = ArticleUpdate()
+        assert update.status is None
+        assert update.hook_text is None
