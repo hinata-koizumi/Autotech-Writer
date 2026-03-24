@@ -36,7 +36,7 @@ func TestProcessArxivLatex_Integration(t *testing.T) {
 
 	client := &http.Client{Timeout: 45 * time.Second}
 	baseURL := "https://export.arxiv.org"
-	
+
 	// Segment Anything: 2304.02643
 	entryID := "2304.02643"
 

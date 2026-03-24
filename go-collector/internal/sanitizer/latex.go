@@ -26,7 +26,7 @@ var (
 func ProcessArxivLatex(ctx context.Context, client *http.Client, baseURL, entryID string, fetchFunc func(context.Context, *http.Client, string) ([]byte, error)) (string, error) {
 	parts := strings.Split(entryID, "/")
 	id := parts[len(parts)-1]
-	
+
 	// Use a 30s timeout for the entire fetch and process operation
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -69,7 +69,7 @@ func ProcessArxivLatex(ctx context.Context, client *http.Client, baseURL, entryI
 			}
 			text := string(content)
 			files[header.Name] = text
-			
+
 			if strings.Contains(text, "\\documentclass") {
 				if mainFile == "" || strings.Contains(text, "\\begin{document}") {
 					mainFile = header.Name
@@ -126,7 +126,7 @@ func resolveImports(content string, files map[string]string, depth int) string {
 		if !strings.HasSuffix(target, ".tex") {
 			target += ".tex"
 		}
-		
+
 		importedContent, exists := files[target]
 		if !exists {
 			return match
@@ -137,7 +137,7 @@ func resolveImports(content string, files map[string]string, depth int) string {
 
 func expandMacros(content string) string {
 	macros := make(map[string]string)
-	
+
 	matches := reNewCmd.FindAllString(content, -1)
 	for _, match := range matches {
 		nameSub := reMacro.FindStringSubmatch(match)

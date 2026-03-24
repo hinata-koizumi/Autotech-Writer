@@ -61,7 +61,7 @@ func collectFromSources(
 		wg.Add(1)
 		go func(source, url string) {
 			defer wg.Done()
-			
+
 			body, err := fetchURLWithRetry(ctx, client, url, DefaultRetryConfig)
 			if err != nil {
 				slog.Error("Failed to fetch source", "source", source, "url", url, "error", err)
@@ -95,7 +95,7 @@ func fetchURLWithRetry(ctx context.Context, client *http.Client, url string, ret
 		if attempt > 0 {
 			delay := retry.BaseDelay * time.Duration(1<<(attempt-1))
 			slog.Warn("Retrying fetch", "url", url, "attempt", attempt, "delay", delay)
-			
+
 			select {
 			case <-time.After(delay):
 			case <-ctx.Done():

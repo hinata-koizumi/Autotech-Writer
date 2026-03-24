@@ -56,7 +56,7 @@ func NewHuggingFaceFetcher(baseURL, arxivURL string, client *http.Client) *Huggi
 // Fetch retrieves today's trending papers from Hugging Face.
 func (f *HuggingFaceFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error) {
 	url := fmt.Sprintf("%s/api/daily_papers", f.BaseURL)
-	
+
 	body, err := fetchURLWithRetry(ctx, f.HTTPClient, url, DefaultRetryConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fetching HF daily papers: %w", err)
@@ -76,7 +76,7 @@ func (f *HuggingFaceFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, e
 
 		publishedAt, _ := time.Parse(time.RFC3339, p.PublishedAt)
 		sourceID := fmt.Sprintf("huggingface:daily_papers:%s", p.ID)
-		
+
 		item := models.FetchedItem{
 			SourceType:  "huggingface",
 			SourceID:    sourceID,

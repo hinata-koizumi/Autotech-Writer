@@ -109,7 +109,7 @@ type itemProcessResult struct {
 
 func (o *Orchestrator) processItems(ctx context.Context, sourceName string, items []models.FetchedItem) (int, int, error) {
 	var totalInserted, totalSkipped, totalErrors int
-	
+
 	for _, item := range items {
 		select {
 		case <-ctx.Done():

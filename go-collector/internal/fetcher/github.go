@@ -59,7 +59,7 @@ func NewGitHubFetcher(baseURL string, repos []string, client *http.Client) *GitH
 // Fetch retrieves the latest releases from configured GitHub repositories.
 func (f *GitHubFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error) {
 	ghToken := os.Getenv("GH_TOKEN")
-	
+
 	eligibleRepos, repoStars := f.filterReposByStars(ctx, ghToken)
 	if len(eligibleRepos) == 0 {
 		return nil, nil
@@ -72,7 +72,7 @@ func (f *GitHubFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error)
 
 	filteredItems := f.filterAndEnrichItems(items, repoStars)
 	f.EnrichWithPRContext(ctx, filteredItems, ghToken)
-	
+
 	return filteredItems, nil
 }
 
@@ -112,7 +112,7 @@ func (f *GitHubFetcher) filterReposByStars(ctx context.Context, token string) ([
 
 	var filtered []string
 	starsMap := make(map[string]int)
-	
+
 	for res := range resultsChan {
 		if res.err != nil {
 			slog.Warn("Failed to get stars for repo", "repo", res.repo, "error", res.err)
@@ -137,7 +137,7 @@ func (f *GitHubFetcher) filterAndEnrichItems(items []models.FetchedItem, repoSta
 		}
 
 		f.enrichItemWithStarsAndScore(&item, repoStars)
-		
+
 		filtered = append(filtered, item)
 	}
 	return filtered
@@ -179,7 +179,7 @@ func (f *GitHubFetcher) evaluateOwnerScore(item *models.FetchedItem, repoPath st
 
 func (f *GitHubFetcher) getRepoStars(ctx context.Context, repo string, token string) (int, time.Time, error) {
 	url := fmt.Sprintf("%s/repos/%s", f.BaseURL, repo)
-	
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, time.Time{}, fmt.Errorf("creating repo request for %s: %w", repo, err)

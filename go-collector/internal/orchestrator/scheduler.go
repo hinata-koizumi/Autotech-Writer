@@ -27,10 +27,10 @@ type ScheduledFetcher struct {
 
 // SchedulerConfig holds the timing parameters for the scheduled orchestrator.
 type SchedulerConfig struct {
-	VIPInterval      time.Duration
-	NormalInterval   time.Duration
-	ArxivPeak        time.Duration
-	ArxivOffPeak     time.Duration
+	VIPInterval    time.Duration
+	NormalInterval time.Duration
+	ArxivPeak      time.Duration
+	ArxivOffPeak   time.Duration
 }
 
 // DefaultSchedulerConfig returns the default scheduling configuration.

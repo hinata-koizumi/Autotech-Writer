@@ -26,12 +26,12 @@ type ArxivFeed struct {
 
 // ArxivEntry represents a single entry in the arXiv Atom feed.
 type ArxivEntry struct {
-	ID        string        `xml:"id"`
-	Title     string        `xml:"title"`
-	Summary   string        `xml:"summary"`
-	Published string        `xml:"published"`
-	Links     []ArxivLink   `xml:"link"`
-	Authors   []ArxivAuthor `xml:"author"`
+	ID         string        `xml:"id"`
+	Title      string        `xml:"title"`
+	Summary    string        `xml:"summary"`
+	Published  string        `xml:"published"`
+	Links      []ArxivLink   `xml:"link"`
+	Authors    []ArxivAuthor `xml:"author"`
 	JournalRef string        `xml:"http://arxiv.org/schemas/atom journal_ref"`
 	Comment    string        `xml:"http://arxiv.org/schemas/atom comment"`
 }
@@ -98,7 +98,7 @@ func (f *ArxivFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error) 
 		if items[i].Metadata == nil {
 			items[i].Metadata = make(map[string]string)
 		}
-		
+
 		// 1. Provisional Scoring (Title/Summary)
 		f.evaluateInstitutionScore(&items[i])
 
@@ -120,7 +120,7 @@ func (f *ArxivFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error) 
 				id = parts[len(parts)-1]
 			}
 			id = strings.Split(id, "v")[0]
-			
+
 			targetIDs = append(targetIDs, "arXiv:"+id)
 			targetItems = append(targetItems, &items[i])
 		}
@@ -174,7 +174,7 @@ func (f *ArxivFetcher) Fetch(ctx context.Context) ([]models.FetchedItem, error) 
 			slog.Debug("Failed to fetch/process LaTeX", "id", items[i].SourceID, "error", texErr)
 		} else if tex != "" {
 			items[i].FullContent = tex
-			
+
 			// 3. Refined Scoring (LaTeX Source)
 			f.refineScoreFromContent(&items[i])
 		}
@@ -193,7 +193,7 @@ func (f *ArxivFetcher) refineScoreFromContent(item *models.FetchedItem) {
 	}
 	// Re-evaluate score using full content (LaTeX might contain more explicit affiliations)
 	content := strings.ToLower(item.FullContent)
-	
+
 	// If current score is already high, we just want to confirm or find a better match
 	// If current score is low, we check if LaTeX source reveals a Tier 1/2 affiliation
 	if match := findTierMatch(content, common.ArxivTier1); match != "" {
@@ -219,7 +219,7 @@ func (f *ArxivFetcher) Name() string {
 // evaluateInstitutionScore assigns a priority score based on the authors' affiliations.
 func (f *ArxivFetcher) evaluateInstitutionScore(item *models.FetchedItem) {
 	content := strings.ToLower(item.Title + " " + item.Summary)
-	
+
 	if match := findTierMatch(content, common.ArxivTier1); match != "" {
 		item.Score = 50
 		item.Metadata["institution"] = match
@@ -250,8 +250,8 @@ func (f *ArxivFetcher) evaluateConferenceScore(item *models.FetchedItem) {
 }
 
 type S2BatchResponse []struct {
-	PaperId                  string `json:"paperId"`
-	ExternalIds              struct {
+	PaperId     string `json:"paperId"`
+	ExternalIds struct {
 		ArXiv string `json:"ArXiv"`
 	} `json:"externalIds"`
 	CitationCount            int `json:"citationCount"`
@@ -268,7 +268,7 @@ func (f *ArxivFetcher) fetchCitationDataBatch(ctx context.Context, ids []string)
 	})
 
 	url := fmt.Sprintf("%s/graph/v1/paper/batch?fields=externalIds,citationCount,influentialCitationCount", f.S2BaseURL)
-	
+
 	body, err := json.Marshal(map[string][]string{"ids": ids})
 	if err != nil {
 		return nil, err
@@ -318,7 +318,6 @@ func targetS2MinScore(val int) int {
 	}
 	return val
 }
-
 
 func findTierMatch(content string, tier []string) string {
 	for _, k := range tier {

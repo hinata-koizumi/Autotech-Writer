@@ -85,11 +85,16 @@ func TestOrchestrator_ConcurrentFetch_NoRace(t *testing.T) {
 	for _, f := range fetchers {
 		go func(ftch interface {
 			Fetch(context.Context) ([]models.FetchedItem, error)
-		}) { defer func() { done <- struct{}{} }(); items, err := ftch.Fetch(context.Background()); if err != nil {
-			return
-		}; for range items {
-			atomic.AddInt32(&insertCount, 1)
-		} }(f)
+		}) {
+			defer func() { done <- struct{}{} }()
+			items, err := ftch.Fetch(context.Background())
+			if err != nil {
+				return
+			}
+			for range items {
+				atomic.AddInt32(&insertCount, 1)
+			}
+		}(f)
 	}
 
 	for range fetchers {

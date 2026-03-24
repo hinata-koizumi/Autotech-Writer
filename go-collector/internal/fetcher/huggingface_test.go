@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
 )
 
 func TestHuggingFaceFetcher_Fetch(t *testing.T) {
@@ -43,7 +42,7 @@ func TestHuggingFaceFetcher_Fetch(t *testing.T) {
 			// In the real fetchAndProcessLatex, this would cause an error in gzip.NewReader
 			// but we want to verify the logic flow.
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("not a gzip")) 
+			w.Write([]byte("not a gzip"))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -69,7 +68,7 @@ func TestHuggingFaceFetcher_Fetch(t *testing.T) {
 		t.Errorf("Expected Score %d, got %d", HuggingFaceBaseScore, item1.Score)
 	}
 	// Note: FullContent will be empty because of "not a gzip" error handled gracefully in Fetch
-	
+
 	// Verify second item (Non-ArXiv ID)
 	item2 := items[1]
 	if item2.SourceID != "huggingface:daily_papers:some-other-id" {
@@ -106,7 +105,7 @@ func TestGitHubTrendingRule(t *testing.T) {
 			// Mocking filterReposByStars logic here since we can't easily mock getRepoStars without more work
 			isTrending := tt.stars >= GitHubTrendingStars && time.Since(tt.created).Hours() < 24*float64(GitHubTrendingDays)
 			accepted := tt.stars >= fetcher.StarThreshold || isTrending
-			
+
 			if accepted != tt.expected {
 				t.Errorf("Expected accepted=%v, got %v", tt.expected, accepted)
 			}

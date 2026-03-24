@@ -130,7 +130,7 @@ func isValuableFile(filename string) bool {
 
 	// File names/suffixes to ignore
 	ignoredSuffices := []string{
-		"go.sum", "go.mod", "poetry.lock", "package-lock.json", 
+		"go.sum", "go.mod", "poetry.lock", "package-lock.json",
 		"yarn.lock", "_test.go", "test_out.txt", "license", "makefile",
 	}
 	for _, suffix := range ignoredSuffices {
@@ -146,7 +146,7 @@ func isValuableFile(filename string) bool {
 
 	// Allowed extensions for source code/content
 	valuableExts := []string{
-		".md", ".go", ".py", ".ts", ".js", ".rs", ".java", 
+		".md", ".go", ".py", ".ts", ".js", ".rs", ".java",
 		".c", ".cpp", ".h", ".yaml", ".yml", ".json",
 	}
 	for _, ext := range valuableExts {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/gofeed"
 	"github.com/autotech-writer/go-collector/internal/models"
+	"github.com/mmcdole/gofeed"
 )
 
 // ============================================================
@@ -397,7 +397,7 @@ func TestGitHubFetcher_WithHTTPTest(t *testing.T) {
 
 func TestGitHubFetcher_EvaluateOwnerScore(t *testing.T) {
 	fetcher := &GitHubFetcher{}
-	
+
 	tests := []struct {
 		repoPath      string
 		expectedScore int
@@ -420,7 +420,7 @@ func TestGitHubFetcher_EvaluateOwnerScore(t *testing.T) {
 	for _, tt := range tests {
 		item := &models.FetchedItem{Metadata: make(map[string]string)}
 		fetcher.evaluateOwnerScore(item, tt.repoPath)
-		
+
 		if item.Score != tt.expectedScore {
 			t.Errorf("For %s, expected score %d, got %d", tt.repoPath, tt.expectedScore, item.Score)
 		}
@@ -498,6 +498,7 @@ func createMockFeed(title string, items []mockFeedItem) *gofeed.Feed {
 	}
 	return feed
 }
+
 // [正常系] Batch APIを利用した会議情報と引用数の拡張スコアリング（およびバージョン番号の除去）が正しく動作すること
 func TestArxivFetcher_EnhancedScoring(t *testing.T) {
 	arxivXML := `<?xml version="1.0" encoding="UTF-8"?>
