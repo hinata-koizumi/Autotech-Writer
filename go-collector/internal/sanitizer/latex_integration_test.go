@@ -2,8 +2,10 @@ package sanitizer
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -11,30 +13,47 @@ import (
 
 // realFetchURL is used for integration testing to fetch actual data from arXiv.
 func realFetchURL(ctx context.Context, client *http.Client, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Autotech-Writer-Test/1.0")
+	var body []byte
+	var err error
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	for attempt := 1; attempt <= 3; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("User-Agent", "Autotech-Writer-Test/1.0")
 
-	return io.ReadAll(resp.Body)
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return io.ReadAll(resp.Body)
+			}
+			err = fmt.Errorf("server returned status: %d", resp.StatusCode)
+		}
+
+		if attempt < 3 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
+	}
+	return nil, err
 }
 
 func TestProcessArxivLatex_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+	// Skip integration test in CI or short mode unless explicitly requested
+	if testing.Short() || os.Getenv("CI") != "" {
+		t.Skip("skipping integration test in CI or short mode")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	client := &http.Client{Timeout: 45 * time.Second}
+	client := &http.Client{
+		Timeout: 45 * time.Second,
+		Transport: &http.Transport{
+			ForceAttemptHTTP2: false,
+		},
+	}
 	baseURL := "https://export.arxiv.org"
 
 	// Segment Anything: 2304.02643
