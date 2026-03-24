@@ -13,7 +13,6 @@ import (
 
 // realFetchURL is used for integration testing to fetch actual data from arXiv.
 func realFetchURL(ctx context.Context, client *http.Client, url string) ([]byte, error) {
-	var body []byte
 	var err error
 
 	for attempt := 1; attempt <= 3; attempt++ {
