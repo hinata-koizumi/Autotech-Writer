@@ -39,7 +39,7 @@ class ArticleRepository:
                     limit,
                     ArticleStatus.PARTIAL_FAILED.value,
                 )
-                
+
                 if not rows:
                     return []
 
@@ -50,15 +50,14 @@ class ArticleRepository:
                     ArticleStatus.PROCESSING.value,
                     article_ids,
                 )
-                
+
                 return [dict(row) for row in rows]
 
     async def get_full_content(self, article_id: int) -> Optional[str]:
         """Fetch the full content (LaTeX/PR diffs) for a specific article."""
         async with self.db_pool.acquire() as conn:
             return await conn.fetchval(
-                "SELECT full_content FROM articles WHERE id = $1",
-                article_id
+                "SELECT full_content FROM articles WHERE id = $1", article_id
             )
 
     async def update_status(
@@ -72,7 +71,7 @@ class ArticleRepository:
 
         # Map update fields to database columns
         data = update.model_dump(exclude_unset=True)
-        
+
         for key, value in data.items():
             if key == "status" and value is not None:
                 updates["status"] = value.value if hasattr(value, "value") else value
@@ -98,7 +97,9 @@ class ArticleRepository:
         async with self.db_pool.acquire() as conn:
             await conn.execute(query, *query_params)
 
-    async def increment_retry(self, article_id: int, max_retries: int = 5) -> ArticleStatus:
+    async def increment_retry(
+        self, article_id: int, max_retries: int = 5
+    ) -> ArticleStatus:
         """Increment retry count atomically and set appropriate status."""
         async with self.db_pool.acquire() as conn:
             new_status_val = await conn.fetchval(

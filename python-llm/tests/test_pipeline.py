@@ -48,7 +48,7 @@ class TestStateTransitions:
                 hook_text="テスト",
                 article_body="本文" * 500,
                 x_post_id="12345",
-            )
+            ),
         )
 
         mock_conn.execute.assert_called_once()
@@ -64,7 +64,9 @@ class TestStateTransitions:
         mock_pool.acquire.return_value.__aexit__.return_value = False
 
         repo = ArticleRepository(mock_pool)
-        await repo.update_status(1, ArticleUpdate(status=ArticleStatus.REJECTED_COMPLIANCE))
+        await repo.update_status(
+            1, ArticleUpdate(status=ArticleStatus.REJECTED_COMPLIANCE)
+        )
 
         mock_conn.execute.assert_called_once()
         call_args = mock_conn.execute.call_args
@@ -104,6 +106,3 @@ class TestRetryCountManagement:
         repo = ArticleRepository(mock_pool)
         status = await repo.increment_retry(article_id=1, max_retries=5)
         assert status == ArticleStatus.FAILED
-
-
-

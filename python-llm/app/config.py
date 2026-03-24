@@ -9,7 +9,9 @@ from app.services.compliance import NG_KEYWORDS as _DEFAULT_NG_KEYWORDS
 @dataclass
 class DBConfig:
     url: str = field(
-        default_factory=lambda: os.getenv("DATABASE_URL", "postgresql://localhost:5432/autotech")
+        default_factory=lambda: os.getenv(
+            "DATABASE_URL", "postgresql://localhost:5432/autotech"
+        )
     )
     pool_min_size: int = 1
     pool_max_size: int = 5
@@ -18,14 +20,28 @@ class DBConfig:
 @dataclass
 class LLMConfig:
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
-    
+    anthropic_api_key: str = field(
+        default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", "")
+    )
+
     # Model selections
-    model_triage_openai: str = field(default_factory=lambda: os.getenv("MODEL_TRIAGE_OPENAI", "gpt-4o-mini"))
-    model_gen_openai: str = field(default_factory=lambda: os.getenv("MODEL_GEN_OPENAI", "gpt-4o"))
-    model_triage_anthropic: str = field(default_factory=lambda: os.getenv("MODEL_TRIAGE_ANTHROPIC", "claude-3-haiku-20240307"))
-    model_gen_anthropic: str = field(default_factory=lambda: os.getenv("MODEL_GEN_ANTHROPIC", "claude-3-5-sonnet-latest"))
-    
+    model_triage_openai: str = field(
+        default_factory=lambda: os.getenv("MODEL_TRIAGE_OPENAI", "gpt-4o-mini")
+    )
+    model_gen_openai: str = field(
+        default_factory=lambda: os.getenv("MODEL_GEN_OPENAI", "gpt-4o")
+    )
+    model_triage_anthropic: str = field(
+        default_factory=lambda: os.getenv(
+            "MODEL_TRIAGE_ANTHROPIC", "claude-3-haiku-20240307"
+        )
+    )
+    model_gen_anthropic: str = field(
+        default_factory=lambda: os.getenv(
+            "MODEL_GEN_ANTHROPIC", "claude-3-5-sonnet-latest"
+        )
+    )
+
     # Defaults
     default_triage_provider: str = "openai"
     default_gen_provider: str = "openai"
@@ -37,7 +53,7 @@ class XConfig:
     api_secret: str = field(default_factory=lambda: os.getenv("X_API_SECRET", ""))
     access_token: str = field(default_factory=lambda: os.getenv("X_ACCESS_TOKEN", ""))
     access_secret: str = field(default_factory=lambda: os.getenv("X_ACCESS_SECRET", ""))
-    
+
     thread_interval_seconds: float = field(
         default_factory=lambda: float(os.getenv("THREAD_INTERVAL_SECONDS", "5.0"))
     )
@@ -46,6 +62,7 @@ class XConfig:
 @dataclass
 class Config:
     """Application configuration loaded from environment variables."""
+
     db: DBConfig = field(default_factory=DBConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     x: XConfig = field(default_factory=XConfig)
@@ -69,8 +86,14 @@ class Config:
     ng_keywords: list[str] = field(default_factory=lambda: list(_DEFAULT_NG_KEYWORDS))
     ai_ng_phrases: list[str] = field(
         default_factory=lambda: [
-            "結論として", "まとめると", "さらに", "重要です", "この記事では",
-            "つまり", "要するに", "つまりは"
+            "結論として",
+            "まとめると",
+            "さらに",
+            "重要です",
+            "この記事では",
+            "つまり",
+            "要するに",
+            "つまりは",
         ]
     )
 
@@ -81,4 +104,3 @@ class Config:
     article_interval_seconds: float = field(
         default_factory=lambda: float(os.getenv("ARTICLE_INTERVAL_SECONDS", "2.0"))
     )
-

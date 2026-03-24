@@ -14,6 +14,7 @@ from app.services.x_api import XApiService
 # Helpers
 # ===================================================================
 
+
 def _make_dry_run_config(**overrides) -> Config:
     cfg = Config(dry_run=True)
     cfg.x.thread_interval_seconds = overrides.get("thread_interval_seconds", 0.0)
@@ -70,11 +71,11 @@ class TestPostArticleThread:
         """[正常系] 長い記事が分割され、複数のツイートIDが返ること"""
         config = _make_dry_run_config(thread_interval_seconds=0.0)
         svc = XApiService(config)
-        
+
         # Create a long article content (> 260 chars)
         content = "Line 1\n\n" + ("A" * 200) + "\n\nLine 2\n\n" + ("B" * 200)
         article = _make_article(content)
-        
+
         ids = await svc.post_article(article)
         assert len(ids) >= 2
         assert all(isinstance(tid, str) for tid in ids)
@@ -86,7 +87,7 @@ class TestPostArticleThread:
         svc = XApiService(config)
 
         call_args = []
-        
+
         async def tracking_post(text, *, reply_to=None, media_ids=None):
             call_args.append({"text": text, "reply_to": reply_to})
             return f"id_{len(call_args)}"
@@ -110,6 +111,7 @@ class TestPostArticleThread:
         svc = XApiService(config)
 
         sleep_calls = []
+
         async def mock_sleep(seconds):
             sleep_calls.append(seconds)
 
@@ -119,7 +121,7 @@ class TestPostArticleThread:
 
         with patch("asyncio.sleep", side_effect=mock_sleep):
             await svc.post_article(article)
-    
+
         # Padding increases the number of chunks to 5, so sleep is called 4 times.
         assert len(sleep_calls) == 4
         assert sleep_calls[0] == 1.5
@@ -127,11 +129,12 @@ class TestPostArticleThread:
     def test_split_article_logic(self):
         """[正常系] 記事の分割ロジックが期待通り動作すること"""
         from app.services.x_api import XTextSplitter
+
         splitter = XTextSplitter(max_chars=15)
-        
+
         text = "Hello World\n\n" + "Second para"
         chunks = splitter.split(text)
-        
+
         assert len(chunks) == 2
         assert "Hello World" in chunks[0]
         assert "Second para" in chunks[1]
@@ -142,7 +145,7 @@ class TestPostArticleThread:
         """[正常系] MarkdownフォーマットがX用のプレーンテキストに正しく変換されること"""
         config = _make_dry_run_config()
         svc = XApiService(config)
-        
+
         md_text = (
             "# Main Title\n\n"
             "This is **bold** and __also bold__.\n"
@@ -153,7 +156,7 @@ class TestPostArticleThread:
             "```python\nprint('hello')\n```\n"
             "Inline `code` test."
         )
-        
+
         expected = (
             "📣 Main Title\n\n"
             "This is bold and also bold.\n"
@@ -164,6 +167,6 @@ class TestPostArticleThread:
             "print('hello')\n"
             "Inline code test."
         )
-        
+
         formatted = svc._format_for_x(md_text)
         assert formatted == expected

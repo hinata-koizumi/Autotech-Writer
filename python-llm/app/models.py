@@ -11,10 +11,8 @@ from pydantic import BaseModel, field_validator, model_validator
 class ArticleFormat(str, Enum):
     """Output format for the generated article."""
 
-    THREAD = "thread"   # Multi-post technical thread
-    NEWS = "news"       # Short, punchy light news post
-
-
+    THREAD = "thread"  # Multi-post technical thread
+    NEWS = "news"  # Short, punchy light news post
 
 
 class ArticleStatus(str, Enum):
@@ -36,7 +34,9 @@ class EvaluationMetric(BaseModel):
     metric_name: str
     score: float | str
     source_quote: str
-    score_note: str | None = ""  # Note for score transformations (e.g., "2x fewer -> 2x削減")
+    score_note: str | None = (
+        ""  # Note for score transformations (e.g., "2x fewer -> 2x削減")
+    )
 
 
 class ExtractionResult(BaseModel):
@@ -54,7 +54,9 @@ class ExtractionResult(BaseModel):
     current_status: str | None = ""  # e.g., "Research Preview", "Release"
     extraction_confidence: float = 1.0  # Self-evaluation (0.0-1.0)
     selected_format: ArticleFormat = ArticleFormat.THREAD
-    reason_for_insufficient: str | None = ""  # Mandatory if is_information_sufficient is False
+    reason_for_insufficient: str | None = (
+        ""  # Mandatory if is_information_sufficient is False
+    )
     is_information_sufficient: bool = False
 
 
@@ -77,6 +79,7 @@ class ArticleUpdate(BaseModel):
 
 class TriggerResponse(BaseModel):
     """Response model for the /trigger endpoint."""
+
     status: str
 
 

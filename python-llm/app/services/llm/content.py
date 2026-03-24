@@ -25,12 +25,12 @@ class ContentService(BaseLLMService):
         self.provider = self._get_provider(config.llm.default_gen_provider)
 
     async def extract_facts(
-        self, 
-        title: str, 
-        summary: str, 
-        source_type: str, 
-        source_url: str = "", 
-        full_content: Optional[str] = None
+        self,
+        title: str,
+        summary: str,
+        source_type: str,
+        source_url: str = "",
+        full_content: Optional[str] = None,
     ) -> ExtractionResult:
         """Extract facts into strict JSON."""
         if self.config.dry_run and not self.provider:
@@ -38,7 +38,7 @@ class ContentService(BaseLLMService):
 
         if not self.provider:
             raise ValueError("No LLM clients configured for generation.")
-        
+
         content_to_use = full_content if full_content else summary
         system_prompt = EXTRACTION_SYSTEM_PROMPT.format(raw_text=content_to_use)
         user_prompt = (
@@ -59,13 +59,13 @@ class ContentService(BaseLLMService):
             raise ValueError("No LLM clients configured for generation.")
 
         extracted_json = extracted.model_dump_json()
-        
+
         if extracted.selected_format == "news":
             system_prompt = NEWS_SYSTEM_PROMPT.format(extracted_json=extracted_json)
         else:
             system_prompt = THREAD_SYSTEM_PROMPT.format(extracted_json=extracted_json)
-        
-        user_prompt = "Generate the article based on the provided extracted facts. Respond ONLY with valid JSON in the format {\"content\": \"...\"}."
+
+        user_prompt = 'Generate the article based on the provided extracted facts. Respond ONLY with valid JSON in the format {"content": "..."}.'
 
         parsed = await self._call_llm_json(self.provider, system_prompt, user_prompt)
         response = ArticleResponse(**parsed)
@@ -75,22 +75,30 @@ class ContentService(BaseLLMService):
     def _validate_article_response(self, response: ArticleResponse) -> None:
         content = response.content.strip()
         if len(content) < self.config.min_article_length:
-            raise ValueError(f"Generated article is too short ({len(content)} chars). Min required: {self.config.min_article_length}")
-        
+            raise ValueError(
+                f"Generated article is too short ({len(content)} chars). Min required: {self.config.min_article_length}"
+            )
+
         found_phrases = [p for p in self.config.ai_ng_phrases if p in content]
         if found_phrases:
-            raise ValueError(f"Article contains forbidden AI-typical phrases: {found_phrases}")
+            raise ValueError(
+                f"Article contains forbidden AI-typical phrases: {found_phrases}"
+            )
 
     async def translate_x_post(self, raw_text: str) -> ArticleResponse:
         """Translate an X post using the specialized prompt."""
         if self.config.dry_run and not self.provider:
-            return ArticleResponse(content="[DRY-RUN] 翻訳済みテキスト: " + raw_text[:50] + "...")
+            return ArticleResponse(
+                content="[DRY-RUN] 翻訳済みテキスト: " + raw_text[:50] + "..."
+            )
 
         if not self.provider:
             raise ValueError("No LLM clients configured for translation.")
 
         system_prompt = X_TRANSLATE_SYSTEM_PROMPT.format(raw_text=raw_text)
-        user_prompt = "Translate the post as instructed. Respond ONLY with the translated text."
+        user_prompt = (
+            "Translate the post as instructed. Respond ONLY with the translated text."
+        )
 
         try:
             translated_text = await self.provider.call(system_prompt, user_prompt)

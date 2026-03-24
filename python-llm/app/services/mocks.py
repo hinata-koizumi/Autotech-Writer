@@ -1,5 +1,6 @@
 from app.models import ExtractionResult, ArticleResponse
 
+
 def mock_extraction_response() -> ExtractionResult:
     return ExtractionResult(
         arxiv_id="2407.02071",
@@ -15,6 +16,7 @@ def mock_extraction_response() -> ExtractionResult:
         reason_for_insufficient="",
         is_information_sufficient=True,
     )
+
 
 def mock_article_response() -> ArticleResponse:
     return ArticleResponse(

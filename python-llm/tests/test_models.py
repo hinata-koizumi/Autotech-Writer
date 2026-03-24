@@ -19,11 +19,15 @@ class TestExtractionResult:
             "proposed_architecture": "New Quant",
             "technical_keyword": "Asynchronous",
             "evaluation_metrics": [
-                {"metric_name": "Latency", "score": "0.5ms", "source_quote": "result is 0.5ms"}
+                {
+                    "metric_name": "Latency",
+                    "score": "0.5ms",
+                    "source_quote": "result is 0.5ms",
+                }
             ],
             "limitations": "N/A",
             "current_status": "Preview",
-            "is_information_sufficient": True
+            "is_information_sufficient": True,
         }
         result = ExtractionResult(**data)
         assert result.arxiv_id == "2407.02071"
@@ -58,29 +62,28 @@ class TestEvaluationMetric:
     def test_valid_metric(self):
         """[正常系] 各型が正しく扱われること"""
         metric = EvaluationMetric(
-            metric_name="Throughput",
-            score=100.5,
-            source_quote="100.5 tokens/s"
+            metric_name="Throughput", score=100.5, source_quote="100.5 tokens/s"
         )
         assert metric.score == 100.5
 
     def test_string_score(self):
         """[正常系] scoreに文字列が渡されても許容されること"""
         metric = EvaluationMetric(
-            metric_name="Accuracy",
-            score="95%",
-            source_quote="95% accuracy achieved"
+            metric_name="Accuracy", score="95%", source_quote="95% accuracy achieved"
         )
+
+
 class TestArticleUpdate:
     """Tests for ArticleUpdate model."""
 
     def test_valid_update(self):
         """[正常系] フィールドが正しく設定されること"""
         from app.models import ArticleStatus, ArticleUpdate
+
         update = ArticleUpdate(
             status=ArticleStatus.COMPLETED,
             hook_text="Test hook",
-            x_thread_ids=["123", "456"]
+            x_thread_ids=["123", "456"],
         )
         assert update.status == ArticleStatus.COMPLETED
         assert update.hook_text == "Test hook"
@@ -89,6 +92,7 @@ class TestArticleUpdate:
     def test_empty_update(self):
         """[正常系] 全フィールドがNoneでもバリデーションに通ること"""
         from app.models import ArticleUpdate
+
         update = ArticleUpdate()
         assert update.status is None
         assert update.hook_text is None

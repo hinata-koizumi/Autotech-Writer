@@ -4,6 +4,7 @@ from httpx import Response
 from app.services.pdf_service import PDFService
 import fitz
 
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_extract_text_from_url_success():
@@ -21,6 +22,7 @@ async def test_extract_text_from_url_success():
     text = await service.extract_text_from_url(url)
 
     assert "Hello arXiv PDF!" in text
+
 
 @pytest.mark.asyncio
 @respx.mock

@@ -14,12 +14,12 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def call(
-        self, 
-        system_prompt: str, 
-        user_prompt: str, 
-        temperature: float = 0.5, 
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.5,
         max_tokens: int = 4000,
-        is_triage: bool = False
+        is_triage: bool = False,
     ) -> str:
         """Send prompt and return raw response text."""
         pass
@@ -32,12 +32,12 @@ class OpenAIProvider(LLMProvider):
         self.model_gen = model_gen
 
     async def call(
-        self, 
-        system_prompt: str, 
-        user_prompt: str, 
-        temperature: float = 0.5, 
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.5,
         max_tokens: int = 4000,
-        is_triage: bool = False
+        is_triage: bool = False,
     ) -> str:
         model = self.model_triage if is_triage else self.model_gen
         messages = []
@@ -61,15 +61,15 @@ class AnthropicProvider(LLMProvider):
         self.model_gen = model_gen
 
     async def call(
-        self, 
-        system_prompt: str, 
-        user_prompt: str, 
-        temperature: float = 0.5, 
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.5,
         max_tokens: int = 4000,
-        is_triage: bool = False
+        is_triage: bool = False,
     ) -> str:
         model = self.model_triage if is_triage else self.model_gen
-        
+
         response = await self.client.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -87,17 +87,17 @@ class LLMProviderFactory:
     def create_providers(config: Config) -> Dict[str, LLMProvider]:
         providers = {}
         llm_cfg = config.llm
-        
+
         if llm_cfg.openai_api_key:
             providers["openai"] = OpenAIProvider(
                 api_key=llm_cfg.openai_api_key,
                 model_triage=llm_cfg.model_triage_openai,
-                model_gen=llm_cfg.model_gen_openai
+                model_gen=llm_cfg.model_gen_openai,
             )
         if llm_cfg.anthropic_api_key:
             providers["anthropic"] = AnthropicProvider(
                 api_key=llm_cfg.anthropic_api_key,
                 model_triage=llm_cfg.model_triage_anthropic,
-                model_gen=llm_cfg.model_gen_anthropic
+                model_gen=llm_cfg.model_gen_anthropic,
             )
         return providers

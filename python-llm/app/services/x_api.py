@@ -16,17 +16,18 @@ class XApiService:
         self.config = config
         self.splitter = XTextSplitter()
         xc = self.config.x
-        
+
         # Initialize Tweepy AsyncClient
         from tweepy.asynchronous import AsyncClient
+
         self.client = AsyncClient(
             consumer_key=xc.api_key,
             consumer_secret=xc.api_secret,
             access_token=xc.access_token,
             access_token_secret=xc.access_secret,
-            wait_on_rate_limit=True
+            wait_on_rate_limit=True,
         )
-        
+
     async def post_tweet(
         self,
         text: str,
@@ -36,9 +37,12 @@ class XApiService:
     ) -> Optional[str]:
         """Post a single tweet optionally as a reply. Returns the tweet ID."""
         if self.config.dry_run:
-            logger.info(f"DRY-RUN: Simulated tweet{' (reply_to=' + reply_to + ')' if reply_to else ''}")
+            logger.info(
+                f"DRY-RUN: Simulated tweet{' (reply_to=' + reply_to + ')' if reply_to else ''}"
+            )
             logger.debug(f"DRY-RUN content: {text[:120]}...")
             import hashlib
+
             return f"dry_run_{hashlib.md5(text.encode()).hexdigest()[:8]}"
 
         xc = self.config.x
@@ -49,11 +53,9 @@ class XApiService:
             # Tweepy create_tweet arguments:
             # in_reply_to_tweet_id should be an int or str
             response = await self.client.create_tweet(
-                text=text,
-                in_reply_to_tweet_id=reply_to,
-                media_ids=media_ids
+                text=text, in_reply_to_tweet_id=reply_to, media_ids=media_ids
             )
-            
+
             tweet_id = str(response.data["id"])
             logger.debug(f"Successfully posted tweet: {tweet_id}")
             return tweet_id
@@ -84,26 +86,26 @@ class XApiService:
 
         # Adjust chunks based on start_index
         remaining_chunks = chunks[start_index:]
-        
+
         for i, chunk in enumerate(remaining_chunks):
             real_index = start_index + i
             # Only attach media to the first tweet of the WHOLE thread (index 0)
             current_media = media_ids if real_index == 0 else None
-            
+
             tweet_id = await self.post_tweet(
                 chunk,
                 reply_to=current_last_id,
                 media_ids=current_media,
             )
-            
+
             if tweet_id:
                 tweet_ids.append(tweet_id)
                 current_last_id = tweet_id
-                
+
                 # Report success back to caller for persistence
                 if on_success_callback:
                     await on_success_callback(tweet_id, real_index)
-            
+
             # Rate limit mitigation for threads
             if real_index < len(chunks) - 1:
                 await asyncio.sleep(self.config.x.thread_interval_seconds)
@@ -113,25 +115,25 @@ class XApiService:
 
     def _format_for_x(self, text: str) -> str:
         """Convert Markdown to plain text suitable for X."""
-        
+
         # 1. Replace Headers with emojis
-        text = re.sub(r'^###\s+(.*)$', r'🔹 \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^##\s+(.*)$', r'📌 \1', text, flags=re.MULTILINE)
-        text = re.sub(r'^#\s+(.*)$', r'📣 \1', text, flags=re.MULTILINE)
-        
+        text = re.sub(r"^###\s+(.*)$", r"🔹 \1", text, flags=re.MULTILINE)
+        text = re.sub(r"^##\s+(.*)$", r"📌 \1", text, flags=re.MULTILINE)
+        text = re.sub(r"^#\s+(.*)$", r"📣 \1", text, flags=re.MULTILINE)
+
         # 2. Remove bold and italic markers
-        text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
-        text = re.sub(r'__(.*?)__', r'\1', text)
-        text = re.sub(r'\*(.*?)\*', r'\1', text)
-        text = re.sub(r'_(.*?)_', r'\1', text)
-        
+        text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+        text = re.sub(r"__(.*?)__", r"\1", text)
+        text = re.sub(r"\*(.*?)\*", r"\1", text)
+        text = re.sub(r"_(.*?)_", r"\1", text)
+
         # 3. Remove code block markers
-        text = re.sub(r'```(?:[a-zA-Z0-9]+)?\n(.*?)\n```', r'\1', text, flags=re.DOTALL)
-        text = re.sub(r'`(.*?)`', r'\1', text)
-        
+        text = re.sub(r"```(?:[a-zA-Z0-9]+)?\n(.*?)\n```", r"\1", text, flags=re.DOTALL)
+        text = re.sub(r"`(.*?)`", r"\1", text)
+
         # 4. Links: [text](http://...) -> text: http://...
-        text = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1: \2', text)
-        
+        text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1: \2", text)
+
         return text.strip()
 
     async def close(self):
@@ -221,8 +223,8 @@ class XTextSplitter:
         final_chunks = []
         total = len(raw_chunks)
         for i, chunk in enumerate(raw_chunks):
-            img_pattern: str = r'\[IMAGE:\s*.*?\]'
-            cleaned_chunk: str = re.sub(img_pattern, '', chunk).strip()
+            img_pattern: str = r"\[IMAGE:\s*.*?\]"
+            cleaned_chunk: str = re.sub(img_pattern, "", chunk).strip()
 
             # Add thread index (1/N) if there are more than 1 chunks
             if total > 1:
@@ -234,7 +236,7 @@ class XTextSplitter:
                 cleaned_chunk = cleaned_chunk + index_str
             else:
                 if len(cleaned_chunk) > self.max_chars:
-                    cleaned_chunk = cleaned_chunk[:self.max_chars - 3] + "..."
+                    cleaned_chunk = cleaned_chunk[: self.max_chars - 3] + "..."
 
             if cleaned_chunk:
                 final_chunks.append(cleaned_chunk)

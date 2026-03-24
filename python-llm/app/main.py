@@ -16,8 +16,7 @@ from app.services.pipeline_service import PipelineService
 from app.models import TriggerResponse
 
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -32,16 +31,16 @@ _db_pool: Optional[asyncpg.Pool] = None
 async def lifespan(app: FastAPI):
     """Lifecycle events for FastAPI app."""
     logger.info("Starting Autotech Writer LLM API...")
-    
+
     # 1. Initialize Config
     app.state.config = config
-    
+
     # 2. Initialize DB pool
     try:
         app.state.db_pool = await asyncpg.create_pool(
-            dsn=config.db.url, 
-            min_size=config.db.pool_min_size, 
-            max_size=config.db.pool_max_size
+            dsn=config.db.url,
+            min_size=config.db.pool_min_size,
+            max_size=config.db.pool_max_size,
         )
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
@@ -66,17 +65,22 @@ app = FastAPI(title="Autotech Writer LLM API", lifespan=lifespan)
 
 # --- Dependencies ---
 
+
 def get_config(request: Request) -> Config:
     return request.app.state.config
+
 
 def get_db_pool(request: Request) -> asyncpg.Pool:
     return request.app.state.db_pool
 
+
 def get_repo(pool: Annotated[asyncpg.Pool, Depends(get_db_pool)]) -> ArticleRepository:
     return ArticleRepository(pool)
 
+
 def get_llm_service(request: Request) -> LLMService:
     return request.app.state.llm_service
+
 
 def get_x_api(request: Request) -> XApiService:
     return request.app.state.x_api
@@ -92,6 +96,7 @@ def get_pipeline_service(
 
 
 # --- Background Tasks ---
+
 
 async def run_pipeline_task(service: PipelineService):
     """Background task wrapper for PipelineService."""

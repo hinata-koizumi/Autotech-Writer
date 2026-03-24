@@ -16,7 +16,9 @@ class BaseLLMService:
 
     def __init__(self, config: Config):
         self.config = config
-        self.providers: Dict[str, LLMProvider] = LLMProviderFactory.create_providers(config)
+        self.providers: Dict[str, LLMProvider] = LLMProviderFactory.create_providers(
+            config
+        )
 
     def _get_provider(self, name: str) -> Optional[LLMProvider]:
         provider = self.providers.get(name)
@@ -26,13 +28,13 @@ class BaseLLMService:
         return provider
 
     async def _call_llm_json(
-        self, 
-        provider: LLMProvider, 
-        system_prompt: str, 
+        self,
+        provider: LLMProvider,
+        system_prompt: str,
         user_prompt: str,
         temperature: float = 0.5,
         max_tokens: int = 4000,
-        is_triage: bool = False
+        is_triage: bool = False,
     ) -> Dict[str, Any]:
         """Call LLM and extract JSON from the response."""
         try:
@@ -41,9 +43,9 @@ class BaseLLMService:
                 user_prompt=user_prompt,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                is_triage=is_triage
+                is_triage=is_triage,
             )
-                
+
             logger.debug(f"Raw LLM response: {raw_text[:500]}...")
             json_text = extract_json(raw_text)
             return json.loads(json_text)
@@ -51,5 +53,7 @@ class BaseLLMService:
             logger.error(f"LLM returned invalid JSON: {raw_text[:200]}...")
             raise ValueError(f"LLM output is not valid JSON: {e}") from e
         except Exception as e:
-            logger.error(f"Error during LLM call or JSON extraction: {type(e).__name__}: {e}")
+            logger.error(
+                f"Error during LLM call or JSON extraction: {type(e).__name__}: {e}"
+            )
             raise

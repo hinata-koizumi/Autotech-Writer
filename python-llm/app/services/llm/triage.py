@@ -29,19 +29,19 @@ class TriageService(BaseLLMService):
         try:
             # Triage usually uses empty system prompt or specialized one
             parsed = await self._call_llm_json(
-                self.provider, 
-                system_prompt="", 
+                self.provider,
+                system_prompt="",
                 user_prompt=prompt,
                 temperature=0.0,
                 max_tokens=200,
-                is_triage=True
+                is_triage=True,
             )
             val = parsed.get("value", False)
             reason = parsed.get("reason", "No reason provided")
-            
+
             if not val:
                 logger.info(f"Article triaged as false. Reason: {reason}")
-            
+
             return bool(val)
         except Exception as e:
             logger.error(f"Error during triage: {type(e).__name__}: {e}")
