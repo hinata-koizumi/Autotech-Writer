@@ -204,4 +204,3 @@ FULLTEXT_EXTRACTION_SYSTEM_PROMPT = """# Objective
 # Reminder
 Lost in the Middle（長文の中だるみ）を防ぐため、常に「目的：Xへの投稿素材の抽出」を意識し、手法(method)と結果(results)のセクションに最も高い注意を払ってください。
 """
-

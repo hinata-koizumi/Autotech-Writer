@@ -63,9 +63,14 @@ async def test_pg_listener_reconnects_on_failure(config):
 
     # 1回目は失敗、2回目は成功するモック
     mock_conn = AsyncMock()
-    with patch("asyncpg.connect", side_effect=[Exception("Connection failed"), mock_conn]):
+    with patch(
+        "asyncpg.connect", side_effect=[Exception("Connection failed"), mock_conn]
+    ):
         # リトライ間隔を短縮
-        with patch("asyncio.sleep", side_effect=lambda d: asyncio.sleep(0) if d == 5 else asyncio.sleep(d)):
+        with patch(
+            "asyncio.sleep",
+            side_effect=lambda d: asyncio.sleep(0) if d == 5 else asyncio.sleep(d),
+        ):
             service.start()
 
             # 接続成功まで待機

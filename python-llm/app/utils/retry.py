@@ -22,7 +22,10 @@ def _is_retryable_exception(exc: Exception) -> bool:
 
         if isinstance(exc, OpenAIRateLimitError):
             return True
-        if isinstance(exc, OpenAIAPIStatusError) and exc.status_code in RETRYABLE_STATUS_CODES:
+        if (
+            isinstance(exc, OpenAIAPIStatusError)
+            and exc.status_code in RETRYABLE_STATUS_CODES
+        ):
             return True
     except ImportError:
         pass
@@ -34,7 +37,10 @@ def _is_retryable_exception(exc: Exception) -> bool:
 
         if isinstance(exc, AnthropicRateLimitError):
             return True
-        if isinstance(exc, AnthropicAPIStatusError) and exc.status_code in RETRYABLE_STATUS_CODES:
+        if (
+            isinstance(exc, AnthropicAPIStatusError)
+            and exc.status_code in RETRYABLE_STATUS_CODES
+        ):
             return True
     except ImportError:
         pass
@@ -43,7 +49,10 @@ def _is_retryable_exception(exc: Exception) -> bool:
     try:
         import httpx
 
-        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in RETRYABLE_STATUS_CODES:
+        if (
+            isinstance(exc, httpx.HTTPStatusError)
+            and exc.response.status_code in RETRYABLE_STATUS_CODES
+        ):
             return True
     except ImportError:
         pass

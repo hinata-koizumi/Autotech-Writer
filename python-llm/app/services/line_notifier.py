@@ -54,7 +54,9 @@ class LineNotifierService:
             ],
         )
 
-        template_message = TemplateMessage(alt_text="記事承認の依頼", template=confirm_template)
+        template_message = TemplateMessage(
+            alt_text="記事承認の依頼", template=confirm_template
+        )
 
         push_message_request = PushMessageRequest(
             to=self.config.line.user_id, messages=[template_message]
@@ -70,9 +72,11 @@ class LineNotifierService:
                     line_bot_api.push_message(push_message_request)
 
             await asyncio.to_thread(_push)
-            logger.info(f"Successfully sent LINE approval request for article {article_id}")
+            logger.info(
+                f"Successfully sent LINE approval request for article {article_id}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to send LINE message for article {article_id}: {e}")
-            # We don't raise here to avoid crashing the pipeline; 
+            # We don't raise here to avoid crashing the pipeline;
             # logging the failure is sufficient as the article remains in WAITING_APPROVAL.

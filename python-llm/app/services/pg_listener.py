@@ -37,7 +37,9 @@ class PgListenerService:
 
                     data = json.loads(payload)
                 except Exception:
-                    logger.warning(f"Failed to parse PG notification payload: {payload}")
+                    logger.warning(
+                        f"Failed to parse PG notification payload: {payload}"
+                    )
 
             # Trigger the pipeline callback with the data
             if asyncio.iscoroutinefunction(self.trigger_callback):

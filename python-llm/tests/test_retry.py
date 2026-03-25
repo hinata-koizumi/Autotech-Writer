@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 from app.utils.retry import retry_with_backoff, _is_retryable_exception
 
-
 # --- Test _is_retryable_exception ---
 
 

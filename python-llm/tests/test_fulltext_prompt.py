@@ -5,7 +5,10 @@ from unittest.mock import AsyncMock, patch
 
 from app.config import Config, LLMConfig
 from app.services.llm.content import ContentService
-from app.services.prompts import EXTRACTION_SYSTEM_PROMPT, FULLTEXT_EXTRACTION_SYSTEM_PROMPT
+from app.services.prompts import (
+    EXTRACTION_SYSTEM_PROMPT,
+    FULLTEXT_EXTRACTION_SYSTEM_PROMPT,
+)
 
 
 @pytest.fixture
@@ -28,11 +31,7 @@ async def test_extract_facts_uses_standard_prompt_for_short_content(config):
     short_content = "This is a short summary."
     title = "Test Paper"
 
-    await service.extract_facts(
-        title=title,
-        summary=short_content,
-        source_type="arxiv"
-    )
+    await service.extract_facts(title=title, summary=short_content, source_type="arxiv")
 
     # Check that EXTRACTION_SYSTEM_PROMPT was used (formatted with raw_text)
     expected_prompt = EXTRACTION_SYSTEM_PROMPT.format(raw_text=short_content)
@@ -55,10 +54,7 @@ async def test_extract_facts_uses_fulltext_prompt_for_long_content(config):
     title = "Test Paper"
 
     await service.extract_facts(
-        title=title,
-        summary="summary",
-        source_type="arxiv",
-        full_content=long_content
+        title=title, summary="summary", source_type="arxiv", full_content=long_content
     )
 
     # Check that FULLTEXT_EXTRACTION_SYSTEM_PROMPT was used (formatted with full_text)

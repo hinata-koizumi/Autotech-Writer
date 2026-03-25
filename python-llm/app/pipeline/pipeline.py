@@ -44,7 +44,12 @@ async def process_article(
             # If approval flow is enabled, stop here (Feature 4)
             if config.approval_enabled:
                 await _mark_as_waiting_approval(
-                    article_id, article_response, hook_text, repo, line_notifier, article["title"]
+                    article_id,
+                    article_response,
+                    hook_text,
+                    repo,
+                    line_notifier,
+                    article["title"],
                 )
                 return
 
@@ -150,16 +155,12 @@ async def _prepare_new_content(
                 article["full_content"] = pdf_text
 
     # 1. Triage
-    await repo.update_status(
-        article_id, ArticleUpdate(status=ArticleStatus.TRIAGING)
-    )
+    await repo.update_status(article_id, ArticleUpdate(status=ArticleStatus.TRIAGING))
     if not await _triage_step(article, llm_service, repo):
         return None, ""
 
     # 2. Extraction & Compliance
-    await repo.update_status(
-        article_id, ArticleUpdate(status=ArticleStatus.GENERATING)
-    )
+    await repo.update_status(article_id, ArticleUpdate(status=ArticleStatus.GENERATING))
     extracted_facts = await _extraction_step(article, repo, llm_service, config)
     if not extracted_facts:
         return None, ""
