@@ -34,6 +34,7 @@ jobs:
         with:
           version: latest
           working-directory: go-collector
+          install-mode: goinstall
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
