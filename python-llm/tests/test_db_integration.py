@@ -3,7 +3,10 @@ import pytest
 import pytest_asyncio
 import asyncpg
 from app.repository import ArticleRepository
-from app.models import ArticleStatus, ArticleUpdate
+from app.models import (
+    ArticleStatus,
+    ArticleUpdate,
+)
 
 
 @pytest_asyncio.fixture
@@ -64,12 +67,14 @@ class TestArticleRepositoryIntegration:
     async def test_update_status(self, db_pool, repo, sample_article_id):
         """Test status transitions to processing."""
         await repo.update_status(
-            sample_article_id, ArticleUpdate(status=ArticleStatus.PROCESSING)
+            sample_article_id,
+            ArticleUpdate(status=ArticleStatus.PROCESSING),
         )
 
         async with db_pool.acquire() as conn:
             updated = await conn.fetchrow(
-                "SELECT status FROM articles WHERE id = $1", sample_article_id
+                "SELECT status FROM articles WHERE id = $1",
+                sample_article_id,
             )
             assert updated["status"] == ArticleStatus.PROCESSING.value
 
@@ -96,6 +101,7 @@ class TestArticleRepositoryIntegration:
 
         async with db_pool.acquire() as conn:
             updated_failed = await conn.fetchrow(
-                "SELECT status FROM articles WHERE id = $1", sample_article_id
+                "SELECT status FROM articles WHERE id = $1",
+                sample_article_id,
             )
             assert updated_failed["status"] == ArticleStatus.FAILED.value

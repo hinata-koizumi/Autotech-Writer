@@ -1,12 +1,19 @@
 """Tests for pipeline state transitions, retry logic, and triage flow."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import (
+    AsyncMock,
+    MagicMock,
+    patch,
+)
 
 import pytest
 
 from app.repository import ArticleRepository
-from app.models import ArticleStatus, ArticleUpdate
+from app.models import (
+    ArticleStatus,
+    ArticleUpdate,
+)
 
 
 # ============================================================
@@ -26,7 +33,10 @@ class TestStateTransitions:
         mock_pool.acquire.return_value.__aexit__.return_value = False
 
         repo = ArticleRepository(mock_pool)
-        await repo.update_status(1, ArticleUpdate(status=ArticleStatus.PROCESSING))
+        await repo.update_status(
+            1,
+            ArticleUpdate(status=ArticleStatus.PROCESSING),
+        )
 
         mock_conn.execute.assert_called_once()
         call_args = mock_conn.execute.call_args
@@ -56,7 +66,9 @@ class TestStateTransitions:
         assert ArticleStatus.COMPLETED.value in call_args[0]
 
     @pytest.mark.asyncio
-    async def test_processing_to_rejected_compliance(self):
+    async def test_processing_to_rejected_compliance(
+        self,
+    ):
         """[異常系] NGワード検出時に rejected_compliance へ更新できること"""
         mock_conn = AsyncMock()
         mock_pool = MagicMock()
@@ -65,7 +77,8 @@ class TestStateTransitions:
 
         repo = ArticleRepository(mock_pool)
         await repo.update_status(
-            1, ArticleUpdate(status=ArticleStatus.REJECTED_COMPLIANCE)
+            1,
+            ArticleUpdate(status=ArticleStatus.REJECTED_COMPLIANCE),
         )
 
         mock_conn.execute.assert_called_once()
@@ -82,7 +95,9 @@ class TestRetryCountManagement:
     """Tests for article retry count and failed status."""
 
     @pytest.mark.asyncio
-    async def test_increment_retry_returns_retry_status(self):
+    async def test_increment_retry_returns_retry_status(
+        self,
+    ):
         """[異常系] リトライ回数がmax未満の場合retryステータスが返ること"""
         mock_conn = AsyncMock()
         mock_conn.fetchval.return_value = ArticleStatus.RETRY.value
@@ -95,7 +110,9 @@ class TestRetryCountManagement:
         assert status == ArticleStatus.RETRY
 
     @pytest.mark.asyncio
-    async def test_increment_retry_to_failed(self):
+    async def test_increment_retry_to_failed(
+        self,
+    ):
         """[異常系] リトライ回数が上限到達でfailedステータスが返ること"""
         mock_conn = AsyncMock()
         mock_conn.fetchval.return_value = ArticleStatus.FAILED.value

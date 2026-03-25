@@ -21,7 +21,9 @@ def _make_dry_run_config(**overrides) -> Config:
     return cfg
 
 
-def _make_article(content: str) -> ArticleResponse:
+def _make_article(
+    content: str,
+) -> ArticleResponse:
     # Bypass validation for testing purposes by padding to required length
     if len(content) < 1000:
         content = content + "\n\n" + ("X" * (1000 - len(content)))
@@ -58,7 +60,10 @@ class TestPostTweet:
         """[異常系] dry-run=False でトークン無しの場合はエラー"""
         config = Config(dry_run=False)
         config.x.access_token = ""
-        with pytest.raises(ValueError, match="X API credentials not configured"):
+        with pytest.raises(
+            ValueError,
+            match="X API credentials not configured",
+        ):
             svc = XApiService(config)
             await svc.post_tweet("hello")
 
@@ -67,7 +72,9 @@ class TestPostArticleThread:
     """Tests for multi-post thread posting via post_article."""
 
     @pytest.mark.asyncio
-    async def test_post_article_splits_and_returns_ids(self):
+    async def test_post_article_splits_and_returns_ids(
+        self,
+    ):
         """[正常系] 長い記事が分割され、複数のツイートIDが返ること"""
         config = _make_dry_run_config(thread_interval_seconds=0.0)
         svc = XApiService(config)
@@ -89,10 +96,19 @@ class TestPostArticleThread:
         call_args = []
 
         async def tracking_post(text, *, reply_to=None, media_ids=None):
-            call_args.append({"text": text, "reply_to": reply_to})
+            call_args.append(
+                {
+                    "text": text,
+                    "reply_to": reply_to,
+                }
+            )
             return f"id_{len(call_args)}"
 
-        with patch.object(svc, "post_tweet", side_effect=tracking_post):
+        with patch.object(
+            svc,
+            "post_tweet",
+            side_effect=tracking_post,
+        ):
             content = "Chunk 1\n\n" + ("X" * 300) + "\n\nChunk 2"
             article = _make_article(content)
             ids = await svc.post_article(article)
@@ -119,7 +135,10 @@ class TestPostArticleThread:
         content = "A" * 200 + "\n\n" + "B" * 200
         article = _make_article(content)
 
-        with patch("asyncio.sleep", side_effect=mock_sleep):
+        with patch(
+            "asyncio.sleep",
+            side_effect=mock_sleep,
+        ):
             await svc.post_article(article)
 
         # Padding increases the number of chunks to 5, so sleep is called 4 times.
@@ -128,7 +147,9 @@ class TestPostArticleThread:
 
     def test_split_article_logic(self):
         """[正常系] 記事の分割ロジックが期待通り動作すること"""
-        from app.services.x_api import XTextSplitter
+        from app.services.x_api import (
+            XTextSplitter,
+        )
 
         splitter = XTextSplitter(max_chars=15)
 

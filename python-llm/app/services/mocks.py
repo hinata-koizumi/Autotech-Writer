@@ -1,4 +1,7 @@
-from app.models import ExtractionResult, ArticleResponse
+from app.models import (
+    ExtractionResult,
+    ArticleResponse,
+)
 
 
 def mock_extraction_response() -> ExtractionResult:
