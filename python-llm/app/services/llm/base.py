@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 
 from app.config import Config
 from app.utils.json_utils import extract_json
+from app.utils.retry import retry_with_backoff
 from .providers import LLMProvider, LLMProviderFactory
 
 logger = logging.getLogger(__name__)
@@ -36,8 +37,9 @@ class BaseLLMService:
         max_tokens: int = 4000,
         is_triage: bool = False,
     ) -> Dict[str, Any]:
-        """Call LLM and extract JSON from the response."""
-        try:
+        """Call LLM with exponential backoff retry and extract JSON from the response."""
+
+        async def _do_call() -> Dict[str, Any]:
             raw_text = await provider.call(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
@@ -45,15 +47,22 @@ class BaseLLMService:
                 max_tokens=max_tokens,
                 is_triage=is_triage,
             )
-
             logger.debug(f"Raw LLM response: {raw_text[:500]}...")
             json_text = extract_json(raw_text)
             return json.loads(json_text)
+
+        try:
+            return await retry_with_backoff(
+                _do_call,
+                max_retries=3,
+                base_delay=2.0,
+                max_delay=60.0,
+            )
         except json.JSONDecodeError as e:
-            logger.error(f"LLM returned invalid JSON: {raw_text[:200]}...")
+            logger.error(f"LLM returned invalid JSON after retries")
             raise ValueError(f"LLM output is not valid JSON: {e}") from e
         except Exception as e:
             logger.error(
-                f"Error during LLM call or JSON extraction: {type(e).__name__}: {e}"
+                f"Error during LLM call after retries: {type(e).__name__}: {e}"
             )
             raise

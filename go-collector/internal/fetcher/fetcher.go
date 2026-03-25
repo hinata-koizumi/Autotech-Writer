@@ -6,10 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/autotech-writer/go-collector/internal/common"
 	"github.com/autotech-writer/go-collector/internal/models"
 )
 
@@ -87,13 +87,13 @@ func collectFromSources(
 }
 
 // fetchURLWithRetry performs an HTTP GET request with exponential backoff retries.
+// Retries on network errors and retryable HTTP status codes (429, 5xx).
 func fetchURLWithRetry(ctx context.Context, client *http.Client, url string, retry RetryConfig) ([]byte, error) {
-	var body []byte
-	var err error
+	var lastErr error
 
 	for attempt := 0; attempt <= retry.MaxRetries; attempt++ {
 		if attempt > 0 {
-			delay := retry.BaseDelay * time.Duration(1<<(attempt-1))
+			delay := common.BackoffDelay(attempt-1, retry.BaseDelay, 30*time.Second)
 			slog.Warn("Retrying fetch", "url", url, "attempt", attempt, "delay", delay)
 
 			select {
@@ -103,42 +103,68 @@ func fetchURLWithRetry(ctx context.Context, client *http.Client, url string, ret
 			}
 		}
 
-		body, err = fetchURL(ctx, client, url)
-		if err == nil {
-			return body, nil
+		body, statusCode, err := fetchURLRaw(ctx, client, url)
+		if err != nil {
+			lastErr = err
+			// Network-level errors are always retryable
+			continue
 		}
 
-		// Don't retry on certain errors (e.g. 404)
-		if strings.Contains(err.Error(), "404") {
-			return nil, err
+		// Non-retryable error status codes (e.g. 404, 400, 403)
+		if statusCode != http.StatusOK && !common.IsRetryableStatusCode(statusCode) {
+			return nil, fmt.Errorf("server returned non-retryable status: %d", statusCode)
 		}
+
+		// Retryable status code (429, 5xx)
+		if statusCode != http.StatusOK {
+			lastErr = fmt.Errorf("server returned retryable status: %d", statusCode)
+			slog.Warn("Retryable HTTP status", "url", url, "status", statusCode)
+			continue
+		}
+
+		return body, nil
 	}
 
-	return nil, fmt.Errorf("after %d retries: %w", retry.MaxRetries, err)
+	return nil, fmt.Errorf("after %d retries: %w", retry.MaxRetries, lastErr)
 }
 
-// fetchURL is a helper to perform HTTP GET requests and return the body.
-func fetchURL(ctx context.Context, client *http.Client, url string) ([]byte, error) {
+// fetchURLRaw performs an HTTP GET and returns body, status code, and error.
+// Network errors return (nil, 0, err). HTTP errors return (nil, statusCode, nil).
+func fetchURLRaw(ctx context.Context, client *http.Client, url string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
+		return nil, 0, fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("User-Agent", "Autotech-Writer/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("performing request: %w", err)
+		return nil, 0, fmt.Errorf("performing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status: %d (%s)", resp.StatusCode, resp.Status)
+		return nil, resp.StatusCode, nil
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response body: %w", err)
+		return nil, 0, fmt.Errorf("reading response body: %w", err)
 	}
 
+	return body, http.StatusOK, nil
+}
+
+// fetchURL is a backwards-compatible wrapper for fetchURLRaw that matches
+// the func(context.Context, *http.Client, string) ([]byte, error) signature
+// used by sanitizer.ProcessArxivLatex.
+func fetchURL(ctx context.Context, client *http.Client, url string) ([]byte, error) {
+	body, statusCode, err := fetchURLRaw(ctx, client, url)
+	if err != nil {
+		return nil, err
+	}
+	if statusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status: %d", statusCode)
+	}
 	return body, nil
 }

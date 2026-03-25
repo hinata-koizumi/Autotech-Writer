@@ -30,7 +30,7 @@ class ArticleRepository:
                     SELECT id, source_type, source_id, title, summary, url, published_at, 
                            article_body, last_posted_index, x_thread_ids, status
                     FROM articles 
-                    WHERE status IN ($1, $3) 
+                    WHERE status IN ($1, $3, $4, $5) 
                     ORDER BY created_at 
                     LIMIT $2 
                     FOR UPDATE SKIP LOCKED
@@ -38,6 +38,8 @@ class ArticleRepository:
                     ArticleStatus.PENDING.value,
                     limit,
                     ArticleStatus.PARTIAL_FAILED.value,
+                    ArticleStatus.RETRY.value,
+                    ArticleStatus.APPROVED.value,
                 )
 
                 if not rows:

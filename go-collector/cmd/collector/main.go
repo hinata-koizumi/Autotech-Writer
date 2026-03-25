@@ -25,7 +25,7 @@ func main() {
 
 	// 1. Determine environment configuration
 	dbURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/autotech?sslmode=disable")
-	webhookURL := getEnv("WEBHOOK_URL", "http://localhost:8000/trigger")
+	webhookURL := os.Getenv("WEBHOOK_URL")
 	xBearerToken := os.Getenv("X_BEARER_TOKEN")
 
 	// 2. Initialize Repository

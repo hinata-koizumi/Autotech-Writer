@@ -20,8 +20,13 @@ class ArticleStatus(str, Enum):
 
     PENDING = "pending"
     PROCESSING = "processing"
+    TRIAGING = "triaging"
+    GENERATING = "generating"
     POSTING = "posting"
+    WAITING_APPROVAL = "waiting_approval"
+    APPROVED = "approved"
     COMPLETED = "completed"
+    POSTED = "posted"
     FAILED = "failed"
     PARTIAL_FAILED = "partial_failed"
     RETRY = "retry"

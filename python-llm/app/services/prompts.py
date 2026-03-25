@@ -158,3 +158,50 @@ X_TRANSLATE_SYSTEM_PROMPT = """\
 翻訳後のテキストのみを出力してください。解説や「翻訳しました」などのメタ発言は一切不要です。
 JSONの "content" フィールドに出力されることを想定しています。
 """
+
+FULLTEXT_EXTRACTION_SYSTEM_PROMPT = """# Objective
+あなたは自動車技術の最前線を追うシニアエンジニアです。
+学術論文の「フルテキスト（全文）」を読み込み、X（Twitter）での技術発信に最適な、技術の本質を突く情報を抽出してください。
+特に「なぜこれが重要なのか」「何が新しいのか」を重視します。
+
+# Input
+以下の論文全文を解析してください：
+{full_text}
+
+# Constraints (重要)
+1. **アテンション制御**: 以下のセクションを特に熟読してください。
+   - Methodology / Implementation (手法の核心)
+   - Results / Evaluation (具体的な数値・成果)
+   - Discussion / Conclusion (論文が主張する差分)
+2. **ノイズ除去**: Related Work や 謝辞、参考文献リストは無視してください。
+3. **日本語での要約**: 抽出した内容は、専門用語を適切に使いつつ、日本の自動車技術者に刺さる表現で日本語で記述してください。
+4. **構造化抽出**: 既存手法と何が違うのか（差分）を明確に抽出してください。
+
+# Output Format
+必ず以下のJSONスキーマで出力してください：
+{{
+  "arxiv_id": "arXiv ID",
+  "model_size": "モデルサイズ",
+  "target_hardware": "対象ハードウェア",
+  "primary_result": "最も重要な数値成果",
+  "problem_statement": "解決しようとする課題",
+  "proposed_architecture": "提案手法の具体的な仕組み",
+  "technical_keyword": "核心的な具体用語1-2語",
+  "evaluation_metrics": [
+    {{
+      "metric_name": "指標名", 
+      "score": "数値/表現", 
+      "source_quote": "原文引用"
+    }}
+  ],
+  "limitations": "制限事項",
+  "current_status": "現在のステータス",
+  "extraction_confidence": 0.95,
+  "selected_format": "thread",
+  "is_information_sufficient": true
+}}
+
+# Reminder
+Lost in the Middle（長文の中だるみ）を防ぐため、常に「目的：Xへの投稿素材の抽出」を意識し、手法(method)と結果(results)のセクションに最も高い注意を払ってください。
+"""
+

@@ -8,80 +8,95 @@
 
 ```mermaid
 flowchart TD
-    subgraph Sources [情報ソース]
-        GH[GitHub Releases]
-        AR[arXiv Papers]
-        HF[Hugging Face Daily]
-        RSS[AI Blogs / RSS]
+    subgraph Sources ["情報ソース"]
+        GH["GitHub Releases"]
+        AR["arXiv Papers"]
+        HF["Hugging Face Daily"]
+        RSS["AI Blogs / RSS"]
     end
 
-    subgraph GC [go-collector (Go)]
-        Orch[Orchestrator\nFast & Slow Scheduling]
-        Filt[Priority Filters\nInstitution/Stars/SemVer]
+    subgraph GC ["go-collector (Go)"]
+        Orch["Orchestrator<br/>Fast & Slow Scheduling"]
+        Filt["Priority Filters"]
     end
 
-    subgraph DB [(PostgreSQL)]
-        Art[(articles)]
-        Seen[(seen_articles)]
-        Stats[(collection_stats)]
+    subgraph DB [("PostgreSQL")]
+        Art[("articles")]
+        Seen[("seen_articles")]
+        Trig["NOTIFY Trigger"]
     end
 
-    subgraph PL [python-llm (Python/FastAPI)]
-        Tri[Triage Pipeline\nLLM Interest Evaluation]
-        Gen[Content Generation\nSummarization / X Thread]
-        Post[X Posting Service]
+    subgraph PL ["python-llm (Python/FastAPI)"]
+        Lis["PG Listener<br/>Dedicated Connection"]
+        Tri["Triage / Extractor<br/>Full-Text Attention"]
+        Gen["Content Generation"]
+        Post["X Posting Service<br/>Exponential Backoff"]
     end
 
-    Sources -->|Fetch| Orch
+    subgraph User ["Human-in-the-Loop"]
+        LINE["LINE Messaging API<br/>Confirm Template"]
+    end
+
+    GH --> Orch
+    AR --> Orch
+    HF --> Orch
+    RSS --> Orch
+
     Orch --> Filt
-    Filt -->|Save| DB
+    Filt -->|Save| Art
+    Art --> Trig
+    Trig -->|NOTIFY| Lis
+    Lis -->|Wake up| Tri
     
-    Stats -.->|Metrics| Orch
     Seen <-->|Deduplication| Orch
 
-    PL -->|Fetch Pending| Art
-    PL -->|Analyze| LLM[外部 LLM (OpenAI等)]
-    LLM -->|Metadata/Score| PL
-    PL -->|Update Result| Art
-    PL -->|Post| X[Social Media (X)]
+    Tri --> Gen
+    Gen -->|Approval Request| LINE
+    LINE -->|Approve/Reject| PL
+    PL -->|Post| X["Social Media (X)"]
 ```
 
 ## 2. 処理シーケンス (Sequence Diagram)
 
-「Fast & Slow」アーキテクチャに基づき、緊急性の高いニュース（Breaking News）と通常の研究論文を効率的に処理する流れです。
+「Event-Driven & Human-in-the-Loop」構成に基づき、記事収集から承認・投稿までの流れです。
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Src as 情報ソース
-    participant GC as go-collector
-    participant DB as PostgreSQL
-    participant PL as python-llm
-    participant LLM as 外部 LLM
-    participant X as X (Twitter)
+    participant Src as "情報ソース"
+    participant GC as "go-collector"
+    participant DB as "PostgreSQL"
+    participant PL as "python-llm"
+    participant LLM as "外部 LLM"
+    participant L as "LINE User"
+    participant X as "X (Twitter)"
 
     rect rgb(240, 248, 255)
     Note over GC: 収集フェーズ
-    GC->>Src: 1. データ取得 (GitHub/arXiv/HF/RSS)
-    GC->>GC: 2. フィルタリング (スター数/所属機関/SemVer等)
-    GC->>DB: 3. 保存 & 重複チェック (seen_articles)
-    GC->>DB: 4. 統計記録 (collection_stats)
+    GC->>Src: "1. データ取得"
+    GC->>DB: "2. 保存 (articles)"
+    DB-->>DB: "3. TRIGGER (NOTIFY)"
     end
 
     rect rgb(255, 248, 240)
     Note over PL: 評価・生成フェーズ
-    PL->>DB: 5. 未処理データの取得
-    PL->>LLM: 6. Triage (重要度・関心度の判定)
-    LLM-->>PL: 7. 判定結果 (Score/Justification)
-    
-    alt 高評価 (Score >= Threshold)
-        PL->>LLM: 8. コンテンツ生成 (要約・Xスレッド形式)
-        LLM-->>PL: 9. 生成テキスト
-        PL->>X: 10. 投稿実行
-        PL->>DB: 11. 投稿済みフラグ更新
-    else 低評価
-        PL->>DB: 12. スキップとしてマーク
+    DB-->>PL: "4. LISTEN 通知受信"
+    PL->>LLM: "5. Triage / 抽出 (Full-Text対応)"
+    LLM-->>PL: "6. 抽出成果"
+    PL->>LLM: "7. コンテンツ生成"
+    LLM-->>PL: "8. 生成テキスト"
     end
+
+    rect rgb(240, 255, 240)
+    Note over L: 人的承認フェーズ
+    PL->>L: "9. 承認依頼通知 (LINE)"
+    L-->>PL: "10. 承認 (Postback)"
+    end
+
+    rect rgb(255, 255, 240)
+    Note over PL: 投稿フェーズ
+    PL->>X: "11. 投稿実行 (Backoff)"
+    PL->>DB: "12. 完了更新"
     end
 ```
 
@@ -89,18 +104,15 @@ sequenceDiagram
 
 ### go-collector (Go)
 - **Multi-Source Fetching**: GitHub Releases, arXiv, Hugging Face Daily Papers, AI系技術ブログ（RSS）から最新情報を取得します。
-- **Fast & Slow Architecture**: ニュース性（Breaking News）の有無に応じた動的なスケジューリングを行います。
-- **Condition Filtering**: 
-    - GitHub: スター数による人気判定、SemVerによるメジャー/マイナーアップデート判定。
-    - arXiv: 著名研究機関（Google, OpenAI等）の所属スコアリング。
-- **Observability**: `collection_stats` を通じて収集の健全性を定量化します。
+- **Event Notification**: データベースへの保存後、PostgreSQLの `NOTIFY` を発行し、Python側へ即時に通知を送ります。
+- **Robustness**: HTTP レートリミット（429）やサーバーエラー（5xx）に対し、ジッター付き指数バックオフを用いたリトライを行います。
 
 ### PostgreSQL (Database)
-- **articles**: 収集した生データ、本文、フルコンテンツ、およびLLMによる評価結果を保存します。
-- **seen_articles**: URL/IDベースの重複排除用テーブル。
-- **collection_stats**: 各ソースのフェッチ成功数や取得件数の統計情報を保持します。
+- **articles**: 収集した生データ、本文、フルコンテンツ、ステータスを保持。
+- **NOTIFY Trigger**: 新規記事の INSERT 時に `new_article` チャネルへ JSON ペイロードを送信します。
 
 ### python-llm (Python / FastAPI)
-- **Triage Pipeline**: LLMを用いて「特定の専門領域における重要度」を評価し、ノイズを排除します。
-- **Context Retrieval**: Triage用に最適化された軽量データと、生成用のフルコンテンツを使い分けることでコスト効率を向上させています。
-- **X Posting Service**: 生成された要約や解説スレッドをX APIを通じて自動投稿します。
+- **PG Listener Service**: 常時接続を維持し、DB からの `NOTIFY` を待ち受けます。通知を受信すると即座にパイプラインを起動します。
+- **Full-Text Attention Control**: 長文論文の処理時に、重要なセクションに LLM の注意を集中させる構造化プロンプト（Objective/Input/Constraints/Output）を適用します。
+- **Human-in-the-Loop**: 生成完了後、LINE Messaging API を通じて承認依頼を送信。ユーザーのボタン操作（Postback）を受けて投稿フェーズへ進みます。
+- **X Posting Service**: X API への投稿時に指数バックオフリトライを行い、API 制限下でも確実にスレッドを投稿します。

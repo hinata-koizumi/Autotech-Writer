@@ -42,6 +42,11 @@ class LLMConfig:
         )
     )
 
+    # Full-text threshold (characters) to switch to structured full-text prompt
+    fulltext_threshold: int = field(
+        default_factory=lambda: int(os.getenv("FULLTEXT_THRESHOLD", "2000"))
+    )
+
     # Defaults
     default_triage_provider: str = "openai"
     default_gen_provider: str = "openai"
@@ -60,12 +65,29 @@ class XConfig:
 
 
 @dataclass
+class LineConfig:
+    channel_access_token: str = field(
+        default_factory=lambda: os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
+    )
+    channel_secret: str = field(
+        default_factory=lambda: os.getenv("LINE_CHANNEL_SECRET", "")
+    )
+    user_id: str = field(default_factory=lambda: os.getenv("LINE_USER_ID", ""))
+
+
+@dataclass
 class Config:
     """Application configuration loaded from environment variables."""
 
     db: DBConfig = field(default_factory=DBConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     x: XConfig = field(default_factory=XConfig)
+    line: LineConfig = field(default_factory=LineConfig)
+
+    # Human-in-the-loop approval
+    approval_enabled: bool = field(
+        default_factory=lambda: os.getenv("APPROVAL_ENABLED", "false").lower() == "true"
+    )
 
     # Dry-run mode
     dry_run: bool = field(

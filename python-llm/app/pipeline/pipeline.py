@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional
 from app.repository import ArticleRepository
 from app.services.llm import LLMService
 from app.services.x_api import XApiService
+from app.services.line_notifier import LineNotifierService
 from app.services.compliance import check_compliance
 from app.config import Config
 from app.models import ExtractionResult, ArticleResponse, ArticleStatus, ArticleUpdate
@@ -21,22 +22,31 @@ async def process_article(
     x_api: XApiService,
     config: Config,
     pdf_service: Optional[any] = None,
+    line_notifier: Optional[LineNotifierService] = None,
 ) -> None:
     """Process a single article through the full pipeline."""
     article_id = article["id"]
+    status = article.get("status")
     logger.info(
-        f"Processing article {article_id}: {article['title']} (Status: {article.get('status')})"
+        f"Processing article {article_id}: {article['title']} (Status: {status})"
     )
 
     try:
         if _is_resuming(article):
-            article_response = _resume_from_partial_failure(article)
+            article_response = _resume_from_article_body(article)
         else:
             article_response, hook_text = await _prepare_new_content(
                 article, repo, llm_service, config, pdf_service=pdf_service
             )
             if article_response is None:
                 return  # Triaged or rejected
+
+            # If approval flow is enabled, stop here (Feature 4)
+            if config.approval_enabled:
+                await _mark_as_waiting_approval(
+                    article_id, article_response, hook_text, repo, line_notifier, article["title"]
+                )
+                return
 
             await _mark_as_posting(article_id, article_response, hook_text, repo)
 
@@ -56,14 +66,38 @@ async def process_article(
 
 
 def _is_resuming(article: Dict[str, Any]) -> bool:
-    return article.get("status") == ArticleStatus.PARTIAL_FAILED.value
+    return article.get("status") in [
+        ArticleStatus.PARTIAL_FAILED.value,
+        ArticleStatus.APPROVED.value,
+    ]
 
 
-def _resume_from_partial_failure(article: Dict[str, Any]) -> ArticleResponse:
+def _resume_from_article_body(article: Dict[str, Any]) -> ArticleResponse:
     logger.info(
-        f"Resuming article {article['id']} from {ArticleStatus.PARTIAL_FAILED.value}"
+        f"Resuming article {article['id']} from stored body (Status: {article.get('status')})"
     )
     return ArticleResponse(content=article["article_body"])
+
+
+async def _mark_as_waiting_approval(
+    article_id: int,
+    response: ArticleResponse,
+    hook_text: str,
+    repo: ArticleRepository,
+    line_notifier: Optional[LineNotifierService],
+    title: str,
+):
+    await repo.update_status(
+        article_id,
+        ArticleUpdate(
+            status=ArticleStatus.WAITING_APPROVAL,
+            hook_text=hook_text,
+            article_body=response.content,
+        ),
+    )
+    if line_notifier:
+        await line_notifier.send_approval_request(article_id, title)
+    logger.info(f"Article {article_id} awaiting manual approval.")
 
 
 async def _mark_as_posting(
@@ -116,10 +150,16 @@ async def _prepare_new_content(
                 article["full_content"] = pdf_text
 
     # 1. Triage
+    await repo.update_status(
+        article_id, ArticleUpdate(status=ArticleStatus.TRIAGING)
+    )
     if not await _triage_step(article, llm_service, repo):
         return None, ""
 
     # 2. Extraction & Compliance
+    await repo.update_status(
+        article_id, ArticleUpdate(status=ArticleStatus.GENERATING)
+    )
     extracted_facts = await _extraction_step(article, repo, llm_service, config)
     if not extracted_facts:
         return None, ""
@@ -265,7 +305,7 @@ async def _posting_step(
             article_id,
             ArticleUpdate(
                 status=ArticleStatus.POSTING,
-                x_post_id=current_thread_ids,
+                x_thread_ids=current_thread_ids,
                 last_posted_index=index,
             ),
         )

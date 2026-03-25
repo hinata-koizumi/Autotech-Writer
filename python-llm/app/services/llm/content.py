@@ -7,6 +7,7 @@ from app.config import Config
 from app.models import ExtractionResult, ArticleResponse
 from app.services.prompts import (
     EXTRACTION_SYSTEM_PROMPT,
+    FULLTEXT_EXTRACTION_SYSTEM_PROMPT,
     THREAD_SYSTEM_PROMPT,
     NEWS_SYSTEM_PROMPT,
     X_TRANSLATE_SYSTEM_PROMPT,
@@ -39,15 +40,32 @@ class ContentService(BaseLLMService):
         if not self.provider:
             raise ValueError("No LLM clients configured for generation.")
 
+        # Determine which prompt to use based on content length
+        is_fulltext = (
+            full_content is not None
+            and len(full_content) >= self.config.llm.fulltext_threshold
+        )
         content_to_use = full_content if full_content else summary
-        system_prompt = EXTRACTION_SYSTEM_PROMPT.format(raw_text=content_to_use)
+        max_tokens = 4000
+
+        if is_fulltext:
+            logger.info(f"Using full-text extraction prompt for {title}")
+            system_prompt = FULLTEXT_EXTRACTION_SYSTEM_PROMPT.format(
+                full_text=content_to_use
+            )
+            max_tokens = 8000  # Increase for long papers
+        else:
+            system_prompt = EXTRACTION_SYSTEM_PROMPT.format(raw_text=content_to_use)
+
         user_prompt = (
             f"Source: {source_type}\nTitle: {title}\n"
             f"Source URL: {source_url}\n\n"
             "Respond ONLY with valid JSON."
         )
 
-        parsed = await self._call_llm_json(self.provider, system_prompt, user_prompt)
+        parsed = await self._call_llm_json(
+            self.provider, system_prompt, user_prompt, max_tokens=max_tokens
+        )
         return ExtractionResult(**parsed)
 
     async def generate_article(self, extracted: ExtractionResult) -> ArticleResponse:

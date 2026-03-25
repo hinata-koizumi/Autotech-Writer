@@ -24,3 +24,4 @@ eval_type_backport>=0.3.0
 pymupdf>=1.23.0
 respx>=0.21.0
 pymupdf4llm>=0.0.1
+line-bot-sdk>=3.0.0
