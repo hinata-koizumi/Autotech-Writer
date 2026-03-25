@@ -48,7 +48,7 @@ fi
 echo_info "Running Go Integration Tests inside Docker..."
 docker run --rm -v "$(pwd):/app" -w /app/go-collector --network autotech-writer_default \
   -e TEST_DB_DSN="postgres://autotech:password@db:5432/autotech_test?sslmode=disable" \
-  golang:1.21 go test -v ./internal/repository/...
+  golang:1.25.8 go test -v ./internal/repository/...
 echo_success "Go Integration Tests Passed"
 
 # Phase 3: Python LLM Integration Tests
