@@ -22,8 +22,7 @@ def mock_extraction_response() -> ExtractionResult:
 
 
 def mock_article_response() -> ArticleResponse:
-    return ArticleResponse(
-        content="""最大2.0倍の高速化を達成 (H100)
+    return ArticleResponse(content="""最大2.0倍の高速化を達成 (H100)
 arXiv:2407.02071
 Hopper世代GPU利用者向け。
 [IMAGE: mock_benchmark]
@@ -44,5 +43,4 @@ Hopper世代GPU利用者向け。
 - https://arxiv.org/abs/2407.02071
 - https://github.com/dao-ai/flash-attention
 試した方の体感値を募集中です。
-[IMAGE: mock_links]"""
-    )
+[IMAGE: mock_links]""")

@@ -40,13 +40,11 @@ def repo(db_pool):
 async def sample_article_id(db_pool):
     """Insert a sample pending article and return its ID."""
     async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
+        row = await conn.fetchrow("""
             INSERT INTO articles (source_type, source_id, title, summary, url, status)
             VALUES ('test', 'item-1', 'Test Title', 'Test Summary', 'http://test.com', 'pending')
             RETURNING id
-            """
-        )
+            """)
         return row["id"]
 
 

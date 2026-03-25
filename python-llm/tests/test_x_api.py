@@ -9,7 +9,6 @@ from app.config import Config
 from app.models import ArticleResponse
 from app.services.x_api import XApiService
 
-
 # ===================================================================
 # Helpers
 # ===================================================================
