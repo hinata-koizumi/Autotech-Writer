@@ -31,41 +31,42 @@ echo_info "Starting test database container..."
 docker compose -f docker-compose.test.yml up -d db
 
 echo_info "Waiting for PostgreSQL to become ready..."
-MAX_ATTEMPTS=10
+# Wait for Docker healthcheck to pass
+MAX_ATTEMPTS=20
 ATTEMPT=1
-until docker exec autotech-writer-db-1 pg_isready -U autotech -d autotech_test > /dev/null 2>&1 || [ $ATTEMPT -eq $MAX_ATTEMPTS ]; do
-    echo "Waiting for DB... ($ATTEMPT/$MAX_ATTEMPTS)"
+until [ "$(docker inspect -f '{{.State.Health.Status}}' autotech-writer-db-1 2>/dev/null)" == "healthy" ] || [ $ATTEMPT -eq $MAX_ATTEMPTS ]; do
+    echo "Waiting for DB healthcheck... ($ATTEMPT/$MAX_ATTEMPTS)"
     sleep 2
     ATTEMPT=$((ATTEMPT + 1))
 done
 
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-    echo_error "Database failed to become ready in time."
+    echo_error "Database failed to become healthy in time."
     exit 1
 fi
 
 # Phase 2: Go Collector Integration Tests
-echo_info "Running Go Integration Tests inside Docker..."
-docker run --rm -v "$(pwd):/app" -w /app/go-collector --network autotech-writer_default \
-  -e TEST_DB_DSN="postgres://autotech:password@db:5432/autotech_test?sslmode=disable" \
-  golang:1.25.8 go test -v ./internal/repository/...
-echo_success "Go Integration Tests Passed"
+echo_info "Running Go Tests inside Docker..."
+# Use host network to connect to DB at localhost:5432
+docker run --rm -v "$(pwd):/app" -w /app/go-collector --network host \
+  golang:1.23-alpine go test -v ./...
+echo_success "Go Tests Passed"
 
 # Phase 3: Python LLM Integration Tests
 echo_info "Preparing Python Integration Tests image..."
 docker build -t autotech-python-test-img -f python-llm/Dockerfile ./python-llm > /dev/null
 
-echo_info "Running Python Integration Tests inside Docker..."
-# Note: pytest-asyncio and asyncpg are already in requirements.txt
-docker run --rm -v "$(pwd):/app" -w /app/python-llm --network autotech-writer_default \
-  -e TEST_DB_DSN="postgres://autotech:password@db:5432/autotech_test" \
-  autotech-python-test-img pytest -v tests/test_db_integration.py
-echo_success "Python Integration Tests Passed"
+echo_info "Running Python Tests inside Docker..."
+# Run full test suite including new features (retry, line webhook, prompt switching, pg listener)
+docker run --rm -v "$(pwd):/app" -w /app/python-llm --network host \
+  -e TEST_DB_DSN="postgres://postgres:postgres@localhost:5432/autotech" \
+  autotech-python-test-img pytest -v tests/
+echo_success "Python Tests Passed"
 
 # Phase 4: Smoke Test / Connectivity Check
 echo_info "Running Smoke Tests..."
-docker run --rm -v "$(pwd):/app" -w /app --network autotech-writer_default \
-  -e TEST_DB_DSN="postgres://autotech:password@db:5432/autotech_test" \
+docker run --rm -v "$(pwd):/app" -w /app --network host \
+  -e TEST_DB_DSN="postgres://postgres:postgres@localhost:5432/autotech" \
   autotech-python-test-img python tests/e2e/smoke_test.py
 echo_success "Smoke Tests Passed"
 

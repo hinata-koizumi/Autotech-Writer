@@ -2,6 +2,8 @@ import os
 import pytest
 import pytest_asyncio
 import asyncpg
+import asyncio
+import json
 from app.repository import ArticleRepository
 from app.models import (
     ArticleStatus,
@@ -41,8 +43,8 @@ async def sample_article_id(db_pool):
     """Insert a sample pending article and return its ID."""
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            INSERT INTO articles (source_type, source_id, title, summary, url, status)
-            VALUES ('test', 'item-1', 'Test Title', 'Test Summary', 'http://test.com', 'pending')
+            INSERT INTO articles (source_type, source_id, title, summary, url, status, created_at)
+            VALUES ('test', 'item-1', 'Test Title', 'Test Summary', 'http://test.com', 'pending', '2000-01-01')
             RETURNING id
             """)
         return row["id"]
@@ -103,3 +105,32 @@ class TestArticleRepositoryIntegration:
                 sample_article_id,
             )
             assert updated_failed["status"] == ArticleStatus.FAILED.value
+
+    async def test_notify_trigger(self, db_pool):
+        """Test that inserting an article triggers a NOTIFY event on 'new_article' channel."""
+        notifications = []
+
+        async def callback(connection, pid, channel, payload):
+            notifications.append(payload)
+
+        async with db_pool.acquire() as conn:
+            # Start listening
+            await conn.add_listener("new_article", callback)
+
+            # Insert a row
+            await conn.execute("""
+                INSERT INTO articles (source_type, source_id, title, summary, url, status)
+                VALUES ('test', 'notify-1', 'Notify Test', 'Summary', 'http://test.com', 'pending')
+            """)
+
+            # Wait a bit for notification (max 1 second)
+            for _ in range(10):
+                if notifications:
+                    break
+                await asyncio.sleep(0.1)
+
+            assert len(notifications) > 0
+            payload = json.loads(notifications[0])
+            assert payload["source_type"] == "test"
+            assert payload["title"] == "Notify Test"
+            assert "id" in payload
